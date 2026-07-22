@@ -48,14 +48,14 @@ Switch presets by changing `"preset": "zen-free"` in `oh-my-opencode-slim.json`.
 ### macOS / Linux
 
 ```bash
-git clone <repo-url> opencode-config && cd opencode-config
+git clone https://github.com/HossamYoussof/opencode-config.git opencode-config && cd opencode-config
 ./install.sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone <repo-url> opencode-config; cd opencode-config
+git clone https://github.com/HossamYoussof/opencode-config.git opencode-config; cd opencode-config
 .\install.ps1
 ```
 
