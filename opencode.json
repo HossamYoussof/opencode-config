@@ -1,0 +1,98 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "gitnexus": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "gitnexus@latest",
+        "mcp"
+      ]
+    },
+    "xcodebuild": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "xcodebuildmcp@latest",
+        "mcp"
+      ],
+      "enabled": true
+    },
+    "mobile": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@mobilenext/mobile-mcp@latest"
+      ],
+      "enabled": true
+    },
+    "ios-simulator": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "ios-simulator-mcp"
+      ],
+      "enabled": false
+    },
+    "figma": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3845/mcp",
+      "enabled": true
+    },
+    "firebase": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "firebase-tools@latest",
+        "mcp"
+      ],
+      "enabled": true
+    },
+    "linear": {
+      "type": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "enabled": false
+    },
+    "clickup": {
+      "type": "remote",
+      "url": "https://mcp.clickup.com/mcp",
+      "enabled": false
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+      "enabled": true
+    },
+    "luciq": {
+      "type": "remote",
+      "url": "https://api.instabug.com/api/mcp",
+      "enabled": false
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer YOUR_GITHUB_KEY"
+      },
+      "enabled": true
+    }
+  },
+  "plugin": [
+    "opencode-mem",
+    "oh-my-opencode-slim"
+  ],
+  "agent": {
+    "explore": {
+      "disable": true
+    },
+    "general": {
+      "disable": true
+    }
+  },
+  "lsp": true
+}
