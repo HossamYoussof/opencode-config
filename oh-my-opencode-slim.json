@@ -76,18 +76,27 @@
     },
     "zen-free": {
       "orchestrator": {
-        "model": "opencode/big-pickle",
+        "model": [
+          "opencode/big-pickle",
+          "opencode/deepseek-v4-flash-free"
+        ],
         "skills": ["*"],
         "mcps": ["*", "!context7"]
       },
       "oracle": {
-        "model": "opencode/nemotron-3-ultra-free",
+        "model": [
+          "opencode/nemotron-3-ultra-free",
+          "opencode/deepseek-v4-flash-free"
+        ],
         "variant": "max",
         "skills": ["simplify"],
         "mcps": []
       },
       "council": {
-        "model": "opencode/deepseek-v4-flash-free",
+        "model": [
+          "opencode/deepseek-v4-flash-free",
+          "opencode/north-mini-code-free"
+        ],
         "variant": "high",
         "skills": [],
         "mcps": []
@@ -111,13 +120,19 @@
         "mcps": []
       },
       "designer": {
-        "model": "opencode/deepseek-v4-flash-free",
+        "model": [
+          "opencode/deepseek-v4-flash-free",
+          "opencode/north-mini-code-free"
+        ],
         "variant": "medium",
-        "skills": [],
+        "skills": ["agent-browser"],
         "mcps": []
       },
       "fixer": {
-        "model": "opencode/deepseek-v4-flash-free",
+        "model": [
+          "opencode/deepseek-v4-flash-free",
+          "opencode/north-mini-code-free"
+        ],
         "variant": "high",
         "skills": [],
         "mcps": []
