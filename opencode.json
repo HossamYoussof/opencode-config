@@ -73,6 +73,14 @@
       "url": "https://api.instabug.com/api/mcp",
       "enabled": false
     },
+    "jenkins": {
+      "type": "remote",
+      "url": "https://jenkins-host/mcp-server/mcp",
+      "headers": {
+        "Authorization": "Basic <user:token base64>"
+      },
+      "enabled": false
+    },
     "github": {
       "type": "remote",
       "url": "https://api.githubcopilot.com/mcp/",
