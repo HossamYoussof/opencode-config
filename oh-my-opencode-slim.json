@@ -103,6 +103,7 @@
     "zen-free": {
       "orchestrator": {
         "model": [
+          "opencode/nemotron-3-ultra-free",
           "opencode/big-pickle",
           "opencode/deepseek-v4-flash-free"
         ],
