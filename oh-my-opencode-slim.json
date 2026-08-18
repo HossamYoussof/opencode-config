@@ -5,20 +5,31 @@
     "openai": {
       "orchestrator": {
         "model": "openai/gpt-5.5",
-        "skills": ["*"],
-        "mcps": ["*", "!context7"]
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
       },
       "oracle": {
         "model": "openai/gpt-5.5",
         "variant": "high",
-        "skills": ["simplify"],
+        "skills": [
+          "simplify"
+        ],
         "mcps": []
       },
       "librarian": {
         "model": "openai/gpt-5.4-mini",
         "variant": "low",
         "skills": [],
-        "mcps": ["websearch", "context7", "grep_app"]
+        "mcps": [
+          "websearch",
+          "context7",
+          "grep_app"
+        ]
       },
       "explorer": {
         "model": "openai/gpt-5.4-mini",
@@ -29,7 +40,9 @@
       "designer": {
         "model": "openai/gpt-5.4-mini",
         "variant": "medium",
-        "skills": ["agent-browser"],
+        "skills": [
+          "agent-browser"
+        ],
         "mcps": []
       },
       "fixer": {
@@ -42,19 +55,30 @@
     "opencode-go": {
       "orchestrator": {
         "model": "opencode-go/glm-5.1",
-        "skills": ["*"],
-        "mcps": ["*", "!context7"]
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
       },
       "oracle": {
         "model": "opencode-go/deepseek-v4-pro",
         "variant": "max",
-        "skills": ["simplify"],
+        "skills": [
+          "simplify"
+        ],
         "mcps": []
       },
       "librarian": {
         "model": "opencode-go/minimax-m2.7",
         "skills": [],
-        "mcps": ["websearch", "context7", "grep_app"]
+        "mcps": [
+          "websearch",
+          "context7",
+          "grep_app"
+        ]
       },
       "explorer": {
         "model": "opencode-go/minimax-m2.7",
@@ -64,7 +88,9 @@
       "designer": {
         "model": "opencode-go/kimi-k2.6",
         "variant": "medium",
-        "skills": ["agent-browser"],
+        "skills": [
+          "agent-browser"
+        ],
         "mcps": []
       },
       "fixer": {
@@ -80,8 +106,13 @@
           "opencode/big-pickle",
           "opencode/deepseek-v4-flash-free"
         ],
-        "skills": ["*"],
-        "mcps": ["*", "!context7"]
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
       },
       "oracle": {
         "model": [
@@ -89,7 +120,9 @@
           "opencode/deepseek-v4-flash-free"
         ],
         "variant": "max",
-        "skills": ["simplify"],
+        "skills": [
+          "simplify"
+        ],
         "mcps": []
       },
       "council": {
@@ -108,7 +141,11 @@
         ],
         "variant": "low",
         "skills": [],
-        "mcps": ["websearch", "context7", "gh_grep"]
+        "mcps": [
+          "websearch",
+          "context7",
+          "gh_grep"
+        ]
       },
       "explorer": {
         "model": [
@@ -125,7 +162,9 @@
           "opencode/north-mini-code-free"
         ],
         "variant": "medium",
-        "skills": ["agent-browser"],
+        "skills": [
+          "agent-browser"
+        ],
         "mcps": []
       },
       "fixer": {
@@ -141,19 +180,30 @@
     "poe": {
       "orchestrator": {
         "model": "poe/anthropic/claude-opus-4.8",
-        "skills": ["*"],
-        "mcps": ["*", "!context7"]
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
       },
       "oracle": {
         "model": "poe/anthropic/claude-opus-4.8",
         "variant": "xhigh",
-        "skills": ["simplify"],
+        "skills": [
+          "simplify"
+        ],
         "mcps": []
       },
       "librarian": {
         "model": "poe/openai/gpt-5.3-codex",
         "skills": [],
-        "mcps": ["websearch", "context7", "grep_app"]
+        "mcps": [
+          "websearch",
+          "context7",
+          "grep_app"
+        ]
       },
       "explorer": {
         "model": "poe/openai/gpt-5.3-codex",
@@ -163,7 +213,9 @@
       "designer": {
         "model": "poe/google/gemini-3.5-flash",
         "variant": "medium",
-        "skills": ["agent-browser"],
+        "skills": [
+          "agent-browser"
+        ],
         "mcps": []
       },
       "fixer": {
