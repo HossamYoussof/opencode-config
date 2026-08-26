@@ -7,7 +7,7 @@ Personal [OpenCode](https://opencode.ai) configuration with MCP servers, agent p
 | File | Purpose |
 |------|---------|
 | `opencode.json` | Main config — MCP servers, plugins, agent toggles, LSP |
-| `oh-my-opencode-slim.json` | Agent model presets (zen-free, openai, poe, opencode-go) |
+| `oh-my-opencode-slim.json` | Agent model presets (opencode, openai, poe, opencode-go) |
 | `install.sh` | Installer for macOS / Linux / Windows (WSL/Git Bash) |
 | `install.ps1` | Installer for native Windows (PowerShell) |
 
@@ -32,16 +32,16 @@ Disabled (enable as needed):
 
 ## Agent Presets (`oh-my-opencode-slim.json`)
 
-The default preset is **zen-free** — all free models, no API keys required.
+The default preset is **opencode** — all free models, no API keys required.
 
 | Preset | Orchestrator | Oracle | Use Case |
 |--------|-------------|--------|----------|
-| `zen-free` | `opencode/big-pickle` | `opencode/nemotron-3-ultra-free` | Free, zero-config |
-| `openai` | `openai/gpt-5.5` | `openai/gpt-5.5` | OpenAI API users |
+| `opencode` | `opencode/x-preview-f-free` | `opencode/big-pickle` | Free, zero-config |
+| `openai` | `openai/gpt-5.6-terra` | `openai/gpt-5.6-sol` | OpenAI API users |
 | `poe` | `poe/anthropic/claude-opus-4.8` | `poe/anthropic/claude-opus-4.8` | Poe subscribers |
-| `opencode-go` | `opencode-go/glm-5.1` | `opencode-go/deepseek-v4-pro` | OpenCode Go users |
+| `opencode-go` | `opencode-go/minimax-m3` | `opencode-go/qwen3.7-max` | OpenCode Go users |
 
-Switch presets by changing `"preset": "zen-free"` in `oh-my-opencode-slim.json`.
+Switch presets by changing `"preset": "opencode"` in `oh-my-opencode-slim.json`.
 
 ## Quick Install
 

@@ -1,10 +1,11 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
-  "preset": "zen-free",
+  "preset": "opencode",
   "presets": {
     "openai": {
       "orchestrator": {
-        "model": "openai/gpt-5.5",
+        "model": "openai/gpt-5.6-terra",
+        "variant": "high",
         "skills": [
           "*"
         ],
@@ -14,7 +15,7 @@
         ]
       },
       "oracle": {
-        "model": "openai/gpt-5.5",
+        "model": "openai/gpt-5.6-sol",
         "variant": "high",
         "skills": [
           "simplify"
@@ -22,39 +23,37 @@
         "mcps": []
       },
       "librarian": {
-        "model": "openai/gpt-5.4-mini",
+        "model": "openai/gpt-5.6-luna",
         "variant": "low",
         "skills": [],
         "mcps": [
-          "websearch",
           "context7",
-          "grep_app"
+          "gh_grep"
         ]
       },
       "explorer": {
-        "model": "openai/gpt-5.4-mini",
+        "model": "openai/gpt-5.6-luna",
         "variant": "low",
         "skills": [],
         "mcps": []
       },
       "designer": {
-        "model": "openai/gpt-5.4-mini",
+        "model": "openai/gpt-5.6-luna",
         "variant": "medium",
-        "skills": [
-          "agent-browser"
-        ],
+        "skills": [],
         "mcps": []
       },
       "fixer": {
-        "model": "openai/gpt-5.4-mini",
-        "variant": "low",
+        "model": "openai/gpt-5.6-luna",
+        "variant": "high",
         "skills": [],
         "mcps": []
       }
     },
     "opencode-go": {
       "orchestrator": {
-        "model": "opencode-go/glm-5.1",
+        "model": "opencode-go/minimax-m3",
+        "variant": "thinking",
         "skills": [
           "*"
         ],
@@ -64,7 +63,7 @@
         ]
       },
       "oracle": {
-        "model": "opencode-go/deepseek-v4-pro",
+        "model": "opencode-go/qwen3.7-max",
         "variant": "max",
         "skills": [
           "simplify"
@@ -72,25 +71,23 @@
         "mcps": []
       },
       "librarian": {
-        "model": "opencode-go/minimax-m2.7",
+        "model": "opencode-go/deepseek-v4-flash",
+        "variant": "high",
         "skills": [],
         "mcps": [
-          "websearch",
           "context7",
-          "grep_app"
+          "gh_grep"
         ]
       },
       "explorer": {
-        "model": "opencode-go/minimax-m2.7",
+        "model": "opencode-go/deepseek-v4-flash",
+        "variant": "high",
         "skills": [],
         "mcps": []
       },
       "designer": {
-        "model": "opencode-go/kimi-k2.6",
-        "variant": "medium",
-        "skills": [
-          "agent-browser"
-        ],
+        "model": "opencode-go/kimi-k2.7-code",
+        "skills": [],
         "mcps": []
       },
       "fixer": {
@@ -98,15 +95,21 @@
         "variant": "high",
         "skills": [],
         "mcps": []
+      },
+      "observer": {
+        "model": "opencode-go/mimo-v2.5",
+        "skills": [],
+        "mcps": []
       }
     },
-    "zen-free": {
+    "opencode": {
       "orchestrator": {
         "model": [
-          "opencode/nemotron-3-ultra-free",
+          "opencode/x-preview-f-free",
           "opencode/big-pickle",
-          "opencode/deepseek-v4-flash-free"
+          "opencode/nemotron-3-ultra-free"
         ],
+        "variant": "high",
         "skills": [
           "*"
         ],
@@ -117,8 +120,8 @@
       },
       "oracle": {
         "model": [
-          "opencode/nemotron-3-ultra-free",
-          "opencode/deepseek-v4-flash-free"
+          "opencode/big-pickle",
+          "opencode/nemotron-3-ultra-free"
         ],
         "variant": "max",
         "skills": [
@@ -128,8 +131,8 @@
       },
       "council": {
         "model": [
-          "opencode/deepseek-v4-flash-free",
-          "opencode/north-mini-code-free"
+          "opencode/big-pickle",
+          "opencode/nemotron-3.5-lightning-free"
         ],
         "variant": "high",
         "skills": [],
@@ -137,8 +140,8 @@
       },
       "librarian": {
         "model": [
-          "opencode/north-mini-code-free",
-          "opencode/deepseek-v4-flash-free"
+          "opencode/nemotron-3.5-lightning-free",
+          "opencode/hy3-free"
         ],
         "variant": "low",
         "skills": [],
@@ -150,8 +153,8 @@
       },
       "explorer": {
         "model": [
-          "opencode/north-mini-code-free",
-          "opencode/deepseek-v4-flash-free"
+          "opencode/nemotron-3.5-lightning-free",
+          "opencode/hy3-free"
         ],
         "variant": "low",
         "skills": [],
@@ -159,8 +162,8 @@
       },
       "designer": {
         "model": [
-          "opencode/deepseek-v4-flash-free",
-          "opencode/north-mini-code-free"
+          "opencode/mimo-v2.5-free",
+          "opencode/muse-spark-1.2-contributor-free"
         ],
         "variant": "medium",
         "skills": [
@@ -170,10 +173,19 @@
       },
       "fixer": {
         "model": [
-          "opencode/deepseek-v4-flash-free",
-          "opencode/north-mini-code-free"
+          "opencode/hy3-free",
+          "opencode/nemotron-3.5-lightning-free"
         ],
         "variant": "high",
+        "skills": [],
+        "mcps": []
+      },
+      "observer": {
+        "model": [
+          "opencode/mimo-v2.5-free",
+          "opencode/muse-spark-1.2-contributor-free"
+        ],
+        "variant": "low",
         "skills": [],
         "mcps": []
       }
