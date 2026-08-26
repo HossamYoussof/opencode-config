@@ -211,7 +211,7 @@
         "mcps": []
       },
       "librarian": {
-        "model": "poe/google/gemini-3.5-flash",
+        "model": "poe/anthropic/claude-haiku-4.5",
         "variant": "low",
         "skills": [],
         "mcps": [
@@ -220,13 +220,13 @@
         ]
       },
       "explorer": {
-        "model": "poe/google/gemini-3.5-flash",
+        "model": "poe/anthropic/claude-haiku-4.5",
         "variant": "low",
         "skills": [],
         "mcps": []
       },
       "designer": {
-        "model": "poe/google/gemini-3.5-flash",
+        "model": "poe/anthropic/claude-haiku-4.5",
         "variant": "medium",
         "skills": [],
         "mcps": []
