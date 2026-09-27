@@ -105,7 +105,7 @@
     "opencode": {
       "orchestrator": {
         "model": [
-          "opencode/big-pickle",
+          "opencode/muse-spark-1.3-contributor-free",
           "opencode/nemotron-3-ultra-free"
         ],
         "variant": "high",
@@ -130,8 +130,8 @@
       },
       "council": {
         "model": [
-          "opencode/big-pickle",
-          "opencode/nemotron-3.5-lightning-free"
+          "opencode/muse-spark-1.3-contributor-free",
+          "opencode/nemotron-3-ultra-free"
         ],
         "variant": "high",
         "skills": [],
@@ -139,7 +139,7 @@
       },
       "librarian": {
         "model": [
-          "opencode/nemotron-3.5-lightning-free",
+          "opencode/mimo-v2.6-flash-free",
           "opencode/ling-3.0-flash-fin-free"
         ],
         "variant": "low",
@@ -152,8 +152,8 @@
       },
       "explorer": {
         "model": [
-          "opencode/nemotron-3.5-lightning-free",
-          "opencode/ling-3.0-flash-fin-free"
+          "opencode/mimo-v2.6-flash-free",
+          "opencode/nemotron-3.5-lightning-free"
         ],
         "variant": "low",
         "skills": [],
@@ -161,8 +161,8 @@
       },
       "designer": {
         "model": [
-          "opencode/mimo-v2.6-flash-free",
-          "opencode/muse-spark-1.3-contributor-free"
+          "opencode/muse-spark-1.3-contributor-free",
+          "opencode/space-bunny-free"
         ],
         "variant": "medium",
         "skills": [
@@ -172,8 +172,8 @@
       },
       "fixer": {
         "model": [
-          "opencode/longcat-2.5-preview-free",
-          "opencode/nemotron-3.5-lightning-free"
+          "opencode/muse-spark-1.3-contributor-free",
+          "opencode/space-bunny-free"
         ],
         "variant": "high",
         "skills": [],
@@ -182,7 +182,7 @@
       "observer": {
         "model": [
           "opencode/mimo-v2.6-flash-free",
-          "opencode/muse-spark-1.3-contributor-free"
+          "opencode/nemotron-3.5-lightning-free"
         ],
         "variant": "low",
         "skills": [],
