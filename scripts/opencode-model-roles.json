@@ -15,6 +15,7 @@
       "classHints": { "powerful": 1.0, "fast": 0.0 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "oracle": {
@@ -29,6 +30,7 @@
       "classHints": { "powerful": 1.2, "fast": 0.0 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "council": {
@@ -43,6 +45,7 @@
       "classHints": { "powerful": 0.8, "fast": 0.0 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "librarian": {
@@ -57,6 +60,7 @@
       "classHints": { "powerful": 0.0, "fast": 1.2 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "explorer": {
@@ -71,6 +75,7 @@
       "classHints": { "powerful": 0.0, "fast": 1.5 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "designer": {
@@ -85,6 +90,7 @@
       "classHints": { "powerful": 0.5, "fast": 0.3 },
       "requireAttachment": true,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "fixer": {
@@ -99,6 +105,7 @@
       "classHints": { "powerful": 0.8, "fast": 0.5 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     },
     "observer": {
@@ -113,6 +120,7 @@
       "classHints": { "powerful": 0.0, "fast": 2.0 },
       "requireAttachment": false,
       "keepMargin": 0.15,
+      "modelCount": 3,
       "pin": []
     }
   },

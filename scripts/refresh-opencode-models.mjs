@@ -179,23 +179,28 @@ function scoreModel(model, roleConfig, global) {
   return score;
 }
 
-function pickTopTwo(models, scored, currentPrimary, currentSecondary, keepMargin) {
+function pickTopN(models, scored, currentModels, keepMargin, n) {
   const sorted = [...scored].sort((a, b) => b.score - a.score);
   if (sorted.length === 0) return [];
-  if (sorted.length === 1) return [sorted[0].model.id];
 
-  const best = sorted[0].model.id;
-  const second = sorted[1].model.id;
+  // Return up to n models, or all available if fewer
+  const topN = sorted.slice(0, n).map(s => s.model.id);
+  if (currentModels.length < n || currentModels.every((m, i) => m === topN[i])) {
+    return topN;
+  }
 
+  // Hysteresis: keep current primary if it's within margin of best
+  const currentPrimary = currentModels[0];
+  const best = topN[0];
   if (currentPrimary && currentPrimary !== best) {
     const primaryScored = scored.find(s => s.model.id === currentPrimary);
     if (primaryScored && (sorted[0].score - primaryScored.score) <= keepMargin) {
-      // Keep current primary, pick best different model as secondary
-      const otherBest = sorted.find(s => s.model.id !== currentPrimary);
-      return [currentPrimary, otherBest ? otherBest.model.id : second];
+      // Keep current primary, fill rest with best different models
+      const others = scored.filter(s => s.model.id !== currentPrimary).slice(0, n - 1);
+      return [currentPrimary, ...others.map(o => o.model.id)];
     }
   }
-  return [best, second];
+  return topN;
 }
 
 function loadConfig(path) {
@@ -315,14 +320,13 @@ Options:
     }));
   }
 
-  // Pick top 2 per role with hysteresis
+  // Pick top N per role with hysteresis (N from role config)
   const results = [];
   const modelToRoles = new Map();
   for (const role of ROLE_ORDER) {
     const roleCfg = rolesConfig.roles[role];
+    const n = roleCfg.modelCount || 3;
     const current = preset[role]?.model || [];
-    const currentPrimary = current[0];
-    const currentSecondary = current[1];
 
     const scored = scoredByRole[role];
     const pin = roleCfg.pin || [];
@@ -333,13 +337,13 @@ Options:
     if (pin.length > 0) {
       // Use pinned models if they're still eligible
       const eligiblePins = pin.filter(p => candidates.some(c => c.id === stripPrefix(p)));
-      if (eligiblePins.length >= 2) {
-        picked = eligiblePins.slice(0, 2);
+      if (eligiblePins.length >= n) {
+        picked = eligiblePins.slice(0, n);
         pinned = true;
-      } else if (eligiblePins.length === 1) {
-        // Pin primary, pick best other as secondary
-        const other = scored.find(s => s.model.id !== eligiblePins[0]);
-        picked = [eligiblePins[0], other?.model.id || scored[1]?.model.id].filter(Boolean);
+      } else if (eligiblePins.length > 0) {
+        // Pin available models, pick best others to fill remaining slots
+        const others = scored.filter(s => !eligiblePins.includes(s.model.id)).slice(0, n - eligiblePins.length);
+        picked = [...eligiblePins, ...others.map(o => o.model.id)].filter(Boolean);
         pinned = true;
       } else {
         // Pins not available — fall through to normal picking
@@ -352,12 +356,10 @@ Options:
     }
 
     if (!picked) {
-      const currentPrimaryStripped = stripPrefix(currentPrimary);
-      const currentSecondaryStripped = stripPrefix(currentSecondary);
-      const primaryMissing = currentPrimary && !candidates.some(c => c.id === currentPrimaryStripped);
-      const secondaryMissing = currentSecondary && !candidates.some(c => c.id === currentSecondaryStripped);
-      if (primaryMissing || secondaryMissing) forced = true;
-      picked = pickTopTwo(candidates, scored, currentPrimaryStripped, currentSecondaryStripped, roleCfg.keepMargin || 0.15);
+      const currentStripped = current.map(stripPrefix);
+      const missing = currentStripped.some((m, i) => m && !candidates.some(c => c.id === m));
+      if (missing) forced = true;
+      picked = pickTopN(candidates, scored, currentStripped, roleCfg.keepMargin || 0.15, n);
     }
 
     // Track sharing
