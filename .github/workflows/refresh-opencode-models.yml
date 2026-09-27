@@ -1,0 +1,94 @@
+name: Refresh Opencode Models
+
+# Re-picks the best-fit free `opencode` models for every agent role in the
+# `opencode` preset of oh-my-opencode-slim.json, then opens an auto-merged PR.
+# The model lineup rotates faster than a human can track, so this runs monthly.
+#
+# The picker is fully deterministic — no API key, no LLM call. It scores every
+# free, non-deprecated model from https://models.dev/api.json against a
+# per-role weight profile in scripts/opencode-model-roles.json.
+
+on:
+  schedule:
+    # 04:17 UTC on the 1st of each month. Deliberately off the hour — the
+    # top-of-hour slot is heavily oversubscribed and starts late.
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report only — do not open or auto-merge a PR'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # push the PR branch
+  pull-requests: write # set auto-merge on the opened PR
+
+concurrency:
+  group: refresh-opencode-models
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Full history: the PR branch may survive from a previous run, and
+          # create-pull-request needs the ancestry to update it. The repo is
+          # four files, so this costs nothing.
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          # Script needs Node >= 20 (global fetch + node:test). 24 is the
+          # current LTS and matches the node24 runtime the actions themselves run on.
+          node-version: '24'
+
+      - name: Test the picker
+        run: node --test scripts/refresh-opencode-models.test.mjs
+
+      - name: Pick models and write the report
+        id: pick
+        run: |
+          node scripts/refresh-opencode-models.mjs \
+            --config oh-my-opencode-slim.json \
+            --roles scripts/opencode-model-roles.json \
+            --report pr-body.md
+
+      - name: Upload report
+        if: always() && hashFiles('pr-body.md') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: model-picker-report
+          path: pr-body.md
+
+      - name: Open pull request
+        id: cpr
+        if: inputs.dry_run != true
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: oh-my-opencode-slim.json
+          branch: chore/refresh-opencode-models
+          commit-message: 'chore(preset): refresh opencode model assignments'
+          title: 'chore(preset): refresh opencode model assignments'
+          body-file: pr-body.md
+          labels: automated
+
+      - name: Enable auto-merge
+        # pull-request-operation is empty when the picker made no change, in
+        # which case no PR exists and there is nothing to merge. That is the
+        # normal monthly outcome whenever the lineup has not shifted.
+        if: steps.cpr.outputs.pull-request-operation != '' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          if gh pr merge --auto --merge "$PR_NUMBER"; then
+            echo "Auto-merge enabled on PR #$PR_NUMBER."
+          else
+            echo "::warning::Could not enable auto-merge on PR #$PR_NUMBER. Merge it manually. If this keeps failing, enable Settings -> General -> Pull Requests -> 'Allow auto-merge'."
+          fi
