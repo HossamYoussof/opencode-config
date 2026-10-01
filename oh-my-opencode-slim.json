@@ -107,7 +107,7 @@
         "model": [
           "opencode/muse-spark-1.3-contributor-free",
           "opencode/nemotron-3-ultra-free",
-          "opencode/longcat-2.5-preview-free"
+          "opencode/space-bunny-free"
         ],
         "variant": "high",
         "skills": [
@@ -121,7 +121,7 @@
       "oracle": {
         "model": [
           "opencode/big-pickle",
-          "opencode/nemotron-3-ultra-free",
+          "opencode/ling-3.0-flash-fin-free",
           "opencode/longcat-2.5-preview-free"
         ],
         "variant": "max",
@@ -134,7 +134,7 @@
         "model": [
           "opencode/muse-spark-1.3-contributor-free",
           "opencode/nemotron-3-ultra-free",
-          "opencode/longcat-2.5-preview-free"
+          "opencode/space-bunny-free"
         ],
         "variant": "high",
         "skills": [],
@@ -144,7 +144,7 @@
         "model": [
           "opencode/mimo-v2.6-flash-free",
           "opencode/ling-3.0-flash-fin-free",
-          "opencode/longcat-2.5-preview-free"
+          "opencode/nemotron-3.5-lightning-free"
         ],
         "variant": "low",
         "skills": [],
@@ -158,7 +158,7 @@
         "model": [
           "opencode/mimo-v2.6-flash-free",
           "opencode/nemotron-3.5-lightning-free",
-          "opencode/longcat-2.5-preview-free"
+          "opencode/ling-3.0-flash-fin-free"
         ],
         "variant": "low",
         "skills": [],
@@ -168,7 +168,7 @@
         "model": [
           "opencode/muse-spark-1.3-contributor-free",
           "opencode/space-bunny-free",
-          "opencode/longcat-2.5-preview-free"
+          "opencode/mimo-v2.6-flash-free"
         ],
         "variant": "medium",
         "skills": [
@@ -180,7 +180,7 @@
         "model": [
           "opencode/muse-spark-1.3-contributor-free",
           "opencode/space-bunny-free",
-          "opencode/longcat-2.5-preview-free"
+          "opencode/nemotron-3-ultra-free"
         ],
         "variant": "high",
         "skills": [],
@@ -189,7 +189,7 @@
       "observer": {
         "model": [
           "opencode/mimo-v2.6-flash-free",
-          "opencode/nemotron-3.5-lightning-free",
+          "opencode/ling-3.0-flash-fin-free",
           "opencode/longcat-2.5-preview-free"
         ],
         "variant": "low",
