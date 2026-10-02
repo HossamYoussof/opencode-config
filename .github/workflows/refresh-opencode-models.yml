@@ -2,7 +2,7 @@ name: Refresh Opencode Models
 
 # Re-picks the best-fit free `opencode` models for every agent role in the
 # `opencode` preset of oh-my-opencode-slim.json, then opens an auto-merged PR.
-# The model lineup rotates faster than a human can track, so this runs monthly.
+# The model lineup rotates faster than a human can track, so this runs weekly.
 #
 # The picker is fully deterministic — no API key, no LLM call. It scores every
 # free, non-deprecated model from https://models.dev/api.json against a
@@ -10,9 +10,9 @@ name: Refresh Opencode Models
 
 on:
   schedule:
-    # 04:17 UTC on the 1st of each month. Deliberately off the hour — the
+    # 04:17 UTC every Monday. Deliberately off the hour — the
     # top-of-hour slot is heavily oversubscribed and starts late.
-    - cron: '17 4 1 * *'
+    - cron: '17 4 * * 1'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -81,7 +81,7 @@ jobs:
       - name: Enable auto-merge
         # pull-request-operation is empty when the picker made no change, in
         # which case no PR exists and there is nothing to merge. That is the
-        # normal monthly outcome whenever the lineup has not shifted.
+        # normal weekly outcome whenever the lineup has not shifted.
         if: steps.cpr.outputs.pull-request-operation != '' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
