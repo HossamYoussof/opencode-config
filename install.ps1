@@ -147,6 +147,27 @@ function Main {
     Write-Host ""
     Write-Ok "All done! Run 'opencode' to get started."
     Write-Host ""
+
+    $star = Read-Host "Star the repo on GitHub if you find it useful? [y/N]"
+    if ($star -match '^[yY]') {
+        $starred = $false
+        $gh = Get-Command gh -ErrorAction SilentlyContinue
+        if ($gh) {
+            gh auth status 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                gh api -X PUT "user/starred/HossamYoussof/opencode-config" --silent 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Ok "Starred the repo."
+                    $starred = $true
+                }
+            }
+        }
+        if (-not $starred) {
+            Write-Warn "Couldn't star automatically — open the repo and star it manually."
+        }
+        Start-Process "https://github.com/HossamYoussof/opencode-config"
+    }
+    Write-Host ""
 }
 
 # Entry point

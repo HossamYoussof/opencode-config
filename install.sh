@@ -169,6 +169,28 @@ main() {
   echo ""
   ok "All done! Run 'opencode' to get started."
   echo ""
+
+  local answer=""
+  read -r -p "Star the repo on GitHub if you find it useful? [y/N] " answer || true
+  case "${answer:-}" in
+    [yY]|[yY][eE][sS])
+      if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+        if gh api -X PUT "user/starred/HossamYoussof/opencode-config" --silent; then
+          ok "Starred the repo."
+        else
+          warn "Couldn't star automatically — open the repo and star it manually."
+        fi
+      else
+        warn "gh CLI not found or not signed in — open the repo and star it manually."
+      fi
+      case "$os" in
+        macos)  open "https://github.com/HossamYoussof/opencode-config" ;;
+        linux)  xdg-open "https://github.com/HossamYoussof/opencode-config" 2>/dev/null || true ;;
+        windows) cmd.exe /c start "" "https://github.com/HossamYoussof/opencode-config" 2>/dev/null || true ;;
+      esac
+      ;;
+  esac
+  echo ""
 }
 
 main "$@"
