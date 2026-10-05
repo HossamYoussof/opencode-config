@@ -13,43 +13,40 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = $PSScriptRoot
 $ConfigFiles = @("opencode.json", "oh-my-opencode-slim.json")
 
-# ── Colours ──────────────────────────────────────────────────────────
+# Colours
 $Cyan   = "Cyan"
 $Green  = "Green"
 $Yellow = "Yellow"
 $Red    = "Red"
 
-function Write-Info  { Write-Host "▸ $args" -ForegroundColor $Cyan }
-function Write-Ok    { Write-Host "✔ $args" -ForegroundColor $Green }
-function Write-Warn  { Write-Host "⚠ $args" -ForegroundColor $Yellow }
-function Write-Err   { Write-Host "✘ $args" -ForegroundColor $Red; exit 1 }
+function Write-Info  { Write-Host "INFO: $args" -ForegroundColor $Cyan }
+function Write-Ok    { Write-Host "OK: $args" -ForegroundColor $Green }
+function Write-Warn  { Write-Host "WARN: $args" -ForegroundColor $Yellow }
+function Write-Err   { Write-Host "ERROR: $args" -ForegroundColor $Red; exit 1 }
 
-# ── Determine global config directory ────────────────────────────────
+# Determine global config directory
 function Get-ConfigDir {
-    if (Test-Path -Path "$env:APPDATA\opencode") {
-        return "$env:APPDATA\opencode"
-    }
     if ($env:APPDATA) {
         return "$env:APPDATA\opencode"
     }
     return "$env:USERPROFILE\.config\opencode"
 }
 
-# ── Detect best install method ───────────────────────────────────────
+# Detect best install method
 function Get-InstallMethod {
-    # 1 — winget (Windows Package Manager)
+    # 1 - winget (Windows Package Manager)
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         return "winget"
     }
-    # 2 — scoop
+    # 2 - scoop
     if (Get-Command scoop -ErrorAction SilentlyContinue) {
         return "scoop"
     }
-    # 3 — choco (Chocolatey)
+    # 3 - choco (Chocolatey)
     if (Get-Command choco -ErrorAction SilentlyContinue) {
         return "choco"
     }
-    # 4 — npm
+    # 4 - npm
     if (Get-Command npm -ErrorAction SilentlyContinue) {
         return "npm"
     }
@@ -57,7 +54,77 @@ function Get-InstallMethod {
     Write-Err "No supported install method found. Please install winget, scoop, choco, or npm first."
 }
 
-# ── Install opencode ─────────────────────────────────────────────────
+# PATH handling: refresh session PATH + persist well-known dirs on User PATH
+function Refresh-SessionPath {
+    $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $user = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($machine -and $user) {
+        $env:PATH = $machine + ';' + $user
+    } elseif ($machine) {
+        $env:PATH = $machine
+    } elseif ($user) {
+        $env:PATH = $user
+    }
+}
+
+function Ensure-OnPath {
+    param([string]$Dir)
+
+    if ([string]::IsNullOrWhiteSpace($Dir)) { return }
+    $Dir = $Dir.Trim().TrimEnd('\', '/')
+    if ([string]::IsNullOrWhiteSpace($Dir)) { return }
+    if (-not (Test-Path -Path $Dir)) { return }
+
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($null -eq $userPath) { $userPath = '' }
+    $found = $false
+    foreach ($p in ($userPath -split ';')) {
+        if ($p.Trim().TrimEnd('\', '/') -ieq $Dir) { $found = $true }
+    }
+    if (-not $found) {
+        if ([string]::IsNullOrWhiteSpace($userPath)) {
+            $userPath = $Dir
+        } else {
+            $userPath = $userPath.TrimEnd(';') + ';' + $Dir
+        }
+        [Environment]::SetEnvironmentVariable('Path', $userPath, 'User')
+        Write-Ok "Added to User PATH: $Dir"
+    }
+
+    $inSession = $false
+    foreach ($p in ($env:PATH -split ';')) {
+        if ($p.Trim().TrimEnd('\', '/') -ieq $Dir) { $inSession = $true }
+    }
+    if (-not $inSession) {
+        $env:PATH = $Dir + ';' + $env:PATH
+    }
+}
+
+function Ensure-InstallLocationsOnPath {
+    $candidates = @()
+    if ($env:USERPROFILE) {
+        $candidates += "$env:USERPROFILE\scoop\shims"
+        $candidates += "$env:USERPROFILE\.opencode\bin"
+    }
+    if ($env:APPDATA) {
+        $candidates += "$env:APPDATA\npm"
+    }
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        try {
+            $prefix = (& npm config get prefix 2>$null | Out-String).Trim()
+            if ($prefix -and (Test-Path -Path $prefix)) {
+                $candidates += $prefix
+            }
+        } catch {
+            Write-Warn "Could not determine npm prefix."
+        }
+    }
+    foreach ($d in ($candidates | Select-Object -Unique)) {
+        Ensure-OnPath $d
+    }
+}
+
+# Install opencode
 function Install-Opencode {
     param([string]$Method)
 
@@ -65,6 +132,8 @@ function Install-Opencode {
         $version = & opencode --version 2>$null
         if (-not $version) { $version = "unknown" }
         Write-Warn "opencode is already installed (version: $version). Skipping install."
+        Refresh-SessionPath
+        Ensure-InstallLocationsOnPath
         return
     }
 
@@ -85,9 +154,13 @@ function Install-Opencode {
         }
     }
 
+    Write-Info "Refreshing PATH for the current session..."
+    Refresh-SessionPath
+    Ensure-InstallLocationsOnPath
+
     # Verify
     if (-not (Get-Command opencode -ErrorAction SilentlyContinue)) {
-        Write-Err "opencode installation failed. Check the output above."
+        Write-Err "opencode not found on PATH after install. Restart your terminal, then check the install output above."
     }
 
     $version = & opencode --version 2>$null
@@ -95,7 +168,7 @@ function Install-Opencode {
     Write-Ok "opencode installed: $version"
 }
 
-# ── Deploy config files ──────────────────────────────────────────────
+# Deploy config files
 function Deploy-Configs {
     param([string]$TargetDir)
 
@@ -116,20 +189,18 @@ function Deploy-Configs {
         if (Test-Path -Path $dst) {
             $backup = "${dst}.bak.${timestamp}"
             Copy-Item -Path $dst -Destination $backup
-            Write-Warn "Existing $file backed up → $backup"
+            Write-Warn "Existing $file backed up to $backup"
         }
 
         Copy-Item -Path $src -Destination $dst
-        Write-Ok "Deployed $file → $dst"
+        Write-Ok "Deployed $file to $dst"
     }
 }
 
-# ── Main ─────────────────────────────────────────────────────────────
+# Main
 function Main {
     Write-Host ""
-    Write-Host "╔══════════════════════════════════════╗" -ForegroundColor $Cyan
-    Write-Host "║       OpenCode Installer Script      ║" -ForegroundColor $Cyan
-    Write-Host "╚══════════════════════════════════════╝" -ForegroundColor $Cyan
+    Write-Host "OpenCode Installer Script" -ForegroundColor $Cyan
     Write-Host ""
 
     $cfgDir = Get-ConfigDir
@@ -138,10 +209,10 @@ function Main {
     $method = Get-InstallMethod
     Write-Info "Install method: $method"
 
-    # Step 1 — Install opencode
+    # Step 1 - Install opencode
     Install-Opencode -Method $method
 
-    # Step 2 — Deploy config files
+    # Step 2 - Deploy config files
     Deploy-Configs -TargetDir $cfgDir
 
     Write-Host ""
@@ -163,7 +234,7 @@ function Main {
             }
         }
         if (-not $starred) {
-            Write-Warn "Couldn't star automatically — open the repo and star it manually."
+            Write-Warn "Couldn't star automatically - open the repo and star it manually."
         }
         Start-Process "https://github.com/HossamYoussof/opencode-config"
     }
