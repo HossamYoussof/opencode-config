@@ -66,6 +66,58 @@ append_to_rc() {
   MODIFIED_RC_FILES+=("$rc_file")
 }
 
+persist_secret_to_rc() {
+  local name="$1"
+  local value="$2"
+  local rc=""
+
+  local escaped="${value//\\/\\\\}"
+  escaped="${escaped//\"/\\\"}"
+  escaped="${escaped//\$/\\\$}"
+  escaped="${escaped//\`/\\\`}"
+
+  local existing_rcs=()
+  for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+    if [[ -f "$rc" ]]; then
+      existing_rcs+=("$rc")
+    fi
+  done
+
+  if [[ ${#existing_rcs[@]} -eq 0 ]]; then
+    local fallback="$HOME/.profile"
+    case "${SHELL:-}" in
+      *bash*) fallback="$HOME/.bashrc" ;;
+      *zsh*)  fallback="$HOME/.zshrc" ;;
+    esac
+    mkdir -p "$(dirname "$fallback")"
+    if grep -Fq -- "export ${name}=" "$fallback" 2>/dev/null; then
+      warn "${name} already set in ${fallback} — update it manually if needed."
+    else
+      printf '%s\n' "export ${name}=\"${escaped}\"" >> "$fallback"
+      chmod 600 "$fallback"
+      MODIFIED_RC_FILES+=("$fallback")
+      ok "Saved ${name} to ${fallback}."
+    fi
+  else
+    local saved=0
+    for rc in "${existing_rcs[@]}"; do
+      if grep -Fq -- "export ${name}=" "$rc" 2>/dev/null; then
+        warn "${name} already set in ${rc} — update it manually if needed."
+        continue
+      fi
+      printf '%s\n' "export ${name}=\"${escaped}\"" >> "$rc"
+      MODIFIED_RC_FILES+=("$rc")
+      ok "Saved ${name} to ${rc}."
+      warn "${rc} already existed — ensure it is not world-readable (e.g. chmod 600 ${rc})."
+      saved=1
+    done
+    if [[ $saved -eq 1 ]]; then
+      warn "Run 'source ~/.zshrc' / 'source ~/.bashrc' or restart your terminal to apply ${name}."
+    fi
+  fi
+  warn "After reloading your shell, restart the service so it picks up the new env: opencode service restart && opencode mcp list"
+}
+
 ensure_on_path() {
   local dir="$1"
   if [[ -z "$dir" ]]; then
@@ -280,11 +332,104 @@ install_opencode() {
   fi
 }
 
+customize_opencode_json() {
+  local src_file="$1"
+  local staging_file="$2"
+
+  cp "$src_file" "$staging_file"
+
+  local github_pat="" jenkins_url="" jenkins_auth=""
+
+  read -r -s -p "GitHub PAT for MCP (optional, Enter to skip): " github_pat || true
+  printf '\n'
+  read -r -p "Jenkins URL (optional, Enter to skip) [https://jenkins-host/mcp-server/mcp]: " jenkins_url || true
+  read -r -p "Jenkins Basic auth value - user:token base64 WITHOUT 'Basic ' prefix (optional, Enter to skip): " jenkins_auth || true
+
+  if [[ -z "${github_pat}" && -z "${jenkins_url}" && -z "${jenkins_auth}" ]]; then
+    return 0
+  fi
+
+  # Persist raw secrets to shell rc + current session only.
+  # They are NEVER written into the deployed opencode.json; the JSON
+  # keeps `Bearer {env:GITHUB_PAT}` / `Basic {env:JENKINS_BASIC_AUTH}`.
+  if [[ -n "${github_pat}" ]]; then
+    export GITHUB_PAT="${github_pat}"
+    persist_secret_to_rc "GITHUB_PAT" "${github_pat}"
+    ok "Saved GITHUB_PAT to shell rc; config keeps {env:GITHUB_PAT}."
+  fi
+
+  local jenkins_auth_provided=0
+  if [[ -n "${jenkins_auth}" ]]; then
+    jenkins_auth_provided=1
+    local normalized_auth
+    normalized_auth="$(printf '%s' "${jenkins_auth}" | sed -E -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^[Bb][Aa][Ss][Ii][Cc] +//')"
+    export JENKINS_BASIC_AUTH="${normalized_auth}"
+    persist_secret_to_rc "JENKINS_BASIC_AUTH" "${normalized_auth}"
+    ok "Saved JENKINS_BASIC_AUTH to shell rc; config keeps {env:JENKINS_BASIC_AUTH}."
+    normalized_auth=""
+    unset normalized_auth
+  fi
+
+  # Reduce exposure of raw secrets in this shell.
+  github_pat=""
+  jenkins_auth=""
+  unset github_pat jenkins_auth
+
+  # Only the non-secret Jenkins URL is patched into the staging JSON.
+  if [[ -z "${jenkins_url}" && ${jenkins_auth_provided} -eq 0 ]]; then
+    return 0
+  fi
+
+  if ! command -v python3 &>/dev/null; then
+    warn "python3 not found — deploying opencode.json without patching Jenkins URL (secrets still saved to shell rc)."
+    return 0
+  fi
+
+  JENKINS_URL="${jenkins_url}" JENKINS_AUTH_PROVIDED="${jenkins_auth_provided}" \
+    python3 - "$staging_file" <<'PYEOF'
+import json
+import os
+import sys
+
+path = sys.argv[1]
+jurl = os.environ.get("JENKINS_URL", "").strip()
+auth_provided = os.environ.get("JENKINS_AUTH_PROVIDED", "0") == "1"
+
+with open(path) as f:
+    data = json.load(f)
+
+servers = data.setdefault("mcp", {}).setdefault("servers", {})
+
+# Secrets are never written here; placeholders like
+# `Bearer {env:GITHUB_PAT}` / `Basic {env:JENKINS_BASIC_AUTH}` stay as-is.
+# Only the non-secret Jenkins URL is patched.
+jenkins_provided = bool(jurl or auth_provided)
+if jenkins_provided:
+    jenkins = servers.setdefault("jenkins", {})
+    if jurl:
+        jenkins["url"] = jurl
+    jenkins.pop("disabled", None)
+
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PYEOF
+
+  if [[ -n "${jenkins_url}" || ${jenkins_auth_provided} -eq 1 ]]; then
+    ok "Patched Jenkins MCP URL (enabled)."
+  fi
+}
+
 deploy_configs() {
   local target_dir="$1"
 
   info "Config directory: ${target_dir}"
   mkdir -p "$target_dir"
+
+  local staging=""
+  staging="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/opencode-staging-$$.json")"
+  # shellcheck disable=SC2064
+  trap "rm -f '${staging}'" RETURN
 
   for file in "${CONFIG_FILES[@]}"; do
     local src="${SCRIPT_DIR}/${file}"
@@ -300,7 +445,13 @@ deploy_configs() {
       warn "Existing ${file} backed up → ${backup}"
     fi
 
-    cp "$src" "$dst"
+    local effective_src="$src"
+    if [[ "$file" == "opencode.json" ]]; then
+      customize_opencode_json "$src" "$staging"
+      effective_src="$staging"
+    fi
+
+    cp "$effective_src" "$dst"
     ok "Deployed ${file} → ${dst}"
   done
 }
@@ -332,6 +483,18 @@ main() {
   echo ""
 
   print_path_next_steps
+
+  if [[ -n "${GITHUB_PAT:-}" || -n "${JENKINS_BASIC_AUTH:-}" ]]; then
+    info "MCP secrets were saved — the background service still has the old env until restarted."
+    warn "Next steps: source ~/.zshrc (or source ~/.bashrc), then opencode service restart && opencode mcp list"
+    local restart_answer=""
+    read -r -p "Restart opencode service now? [y/N] " restart_answer || true
+    case "${restart_answer:-}" in
+      [yY]|[yY][eE][sS])
+        opencode service restart || true
+        ;;
+    esac
+  fi
 
   local answer=""
   read -r -p "Star the repo on GitHub if you find it useful? [y/N] " answer || true

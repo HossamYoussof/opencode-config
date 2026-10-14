@@ -152,6 +152,149 @@ function Install-Opencode {
     Write-Ok "opencode installed: $version"
 }
 
+# Persist an MCP credential to the User environment without ever baking it
+# into opencode.json. Never writes the value to the console.
+function Save-McpSecretToUserEnv {
+    param([string]$Name, [string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) { return }
+    if ([string]::IsNullOrWhiteSpace($Value)) { return }
+    $trimmed = $Value.Trim()
+    if ([string]::IsNullOrWhiteSpace($trimmed)) { return }
+    $existing = [Environment]::GetEnvironmentVariable($Name, 'User')
+    if (-not [string]::IsNullOrWhiteSpace($existing)) {
+        Write-Warn "$Name already set in User env; update it manually via System settings if needed."
+        return
+    }
+    [Environment]::SetEnvironmentVariable($Name, $trimmed, 'User')
+    Set-Item -Path ("Env:" + $Name) -Value $trimmed
+    Write-Ok "Saved $Name to User environment (current session updated)."
+}
+
+# Convert a SecureString to plaintext for env persistence only.
+# Caller must clear the returned plaintext ASAP. Never Write-Host it.
+# PS 5.1 compatible.
+function Convert-SecureStringToPlainText {
+    param([System.Security.SecureString]$Secure)
+
+    if ($null -eq $Secure) { return "" }
+    $bstr = [IntPtr]::Zero
+    try {
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure)
+        $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        if ($null -eq $plain) { return "" }
+        return $plain
+    } catch {
+        return ""
+    } finally {
+        if ($bstr -ne [IntPtr]::Zero) {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+}
+
+# Prompt for optional credentials and stage a customized opencode.json.
+# All prompts are optional (Enter to skip). Never aborts the install.
+function Get-CustomizedOpencodeJson {
+    param([string]$SrcPath)
+
+    try {
+        if (-not (Test-Path -Path $SrcPath)) { return $SrcPath }
+
+        $tempDir = [IO.Path]::GetTempPath()
+        $staging = Join-Path -Path $tempDir -ChildPath ("opencode.staged." + $PID + ".json")
+        Copy-Item -Path $SrcPath -Destination $staging -Force
+
+        # Current Jenkins URL default (shown in the prompt).
+        $defaultJenkinsUrl = "https://jenkins-host/mcp-server/mcp"
+        try {
+            $preview = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            if ($preview.mcp -and $preview.mcp.servers -and $preview.mcp.servers.jenkins -and $preview.mcp.servers.jenkins.url) {
+                $defaultJenkinsUrl = [string]$preview.mcp.servers.jenkins.url
+            }
+        } catch {
+            # Ignore preview failures; patch step below will warn if JSON is invalid.
+        }
+
+        # Optional prompts. Empty/error just skips customization.
+        # Secrets use SecureString so keystrokes are not echoed; Jenkins URL
+        # is not secret and stays a normal Read-Host.
+        $githubPat = ""
+        $jenkinsUrl = ""
+        $jenkinsAuth = ""
+        $githubSecure = $null
+        $jenkinsAuthSecure = $null
+        try { $githubSecure = Read-Host "GitHub PAT (optional, Enter to skip)" -AsSecureString } catch { $githubSecure = $null }
+        try { $jenkinsUrl = Read-Host ("Jenkins URL (optional, Enter to keep [$defaultJenkinsUrl])") } catch { $jenkinsUrl = "" }
+        try { $jenkinsAuthSecure = Read-Host "Jenkins Basic auth value, user:token base64 WITHOUT 'Basic ' prefix (optional, Enter to skip)" -AsSecureString } catch { $jenkinsAuthSecure = $null }
+        try {
+            if ($null -ne $githubSecure) { $githubPat = Convert-SecureStringToPlainText -Secure $githubSecure }
+        } catch { $githubPat = "" }
+        try {
+            if ($null -ne $jenkinsAuthSecure) { $jenkinsAuth = Convert-SecureStringToPlainText -Secure $jenkinsAuthSecure }
+        } catch { $jenkinsAuth = "" }
+        $githubSecure = $null
+        $jenkinsAuthSecure = $null
+        if ($null -eq $githubPat) { $githubPat = "" }
+        if ($null -eq $jenkinsUrl) { $jenkinsUrl = "" }
+        if ($null -eq $jenkinsAuth) { $jenkinsAuth = "" }
+
+        $hasGithubPat = -not [string]::IsNullOrWhiteSpace($githubPat)
+        $hasJenkinsUrl = -not [string]::IsNullOrWhiteSpace($jenkinsUrl)
+        $hasJenkinsAuth = -not [string]::IsNullOrWhiteSpace($jenkinsAuth)
+
+        if (-not $hasGithubPat -and -not $hasJenkinsUrl -and -not $hasJenkinsAuth) {
+            Write-Info "No custom credentials entered; deploying opencode.json as-is."
+            $githubPat = ""
+            $jenkinsAuth = ""
+            return $staging
+        }
+
+        try {
+            $json = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            Write-Warn "Could not parse opencode.json; deploying it unmodified."
+            $githubPat = ""
+            $jenkinsAuth = ""
+            return $SrcPath
+        }
+
+        # Secrets are NEVER baked into JSON. Placeholders
+        # (Bearer {env:GITHUB_PAT} / Basic {env:JENKINS_BASIC_AUTH}) stay as-is
+        # in the template; raw values go to User env only.
+        if ($hasGithubPat) {
+            Save-McpSecretToUserEnv -Name 'GITHUB_PAT' -Value $githubPat
+        }
+
+        if ($hasJenkinsAuth) {
+            $authValue = $jenkinsAuth.Trim()
+            if ($authValue -imatch '^\s*Basic\s+(.+)$') {
+                $authValue = $Matches[1].Trim()
+            }
+            Save-McpSecretToUserEnv -Name 'JENKINS_BASIC_AUTH' -Value $authValue
+            $authValue = ""
+        }
+
+        if (($hasJenkinsUrl -or $hasJenkinsAuth) -and $json.mcp -and $json.mcp.servers -and $json.mcp.servers.jenkins) {
+            if ($hasJenkinsUrl) {
+                $json.mcp.servers.jenkins.url = $jenkinsUrl.Trim()
+            }
+            if ($json.mcp.servers.jenkins.PSObject.Properties['disabled']) {
+                $null = $json.mcp.servers.jenkins.PSObject.Properties.Remove('disabled')
+            }
+        }
+
+        $json | ConvertTo-Json -Depth 10 | Set-Content -Path $staging -Encoding UTF8
+        Write-Ok "Staged customized opencode.json."
+        $githubPat = ""
+        $jenkinsAuth = ""
+        return $staging
+    } catch {
+        Write-Warn "Skipping credential customization; deploying opencode.json as-is."
+        return $SrcPath
+    }
+}
+
 # Deploy config files
 function Deploy-Configs {
     param([string]$TargetDir)
@@ -162,8 +305,14 @@ function Deploy-Configs {
 
     $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 
+    $opencodeSrc = Join-Path -Path $ScriptDir -ChildPath "opencode.json"
+    $stagedOpencodeJson = Get-CustomizedOpencodeJson -SrcPath $opencodeSrc
+
     foreach ($file in $ConfigFiles) {
         $src = Join-Path -Path $ScriptDir -ChildPath $file
+        if ($file -eq "opencode.json" -and $stagedOpencodeJson -and (Test-Path -Path $stagedOpencodeJson)) {
+            $src = $stagedOpencodeJson
+        }
         $dst = Join-Path -Path $TargetDir -ChildPath $file
 
         if (-not (Test-Path -Path $src)) {
@@ -179,6 +328,13 @@ function Deploy-Configs {
         Copy-Item -Path $src -Destination $dst
         Write-Ok "Deployed $file to $dst"
     }
+
+    if ($stagedOpencodeJson -and ($stagedOpencodeJson -ne $opencodeSrc) -and (Test-Path -Path $stagedOpencodeJson)) {
+        Remove-Item -Path $stagedOpencodeJson -ErrorAction SilentlyContinue
+    }
+
+    Write-Warn "If the opencode background service is running, it still has the old environment."
+    Write-Info "Restart it with: opencode service restart ; then verify with: opencode mcp list"
 }
 
 # Main
@@ -198,6 +354,25 @@ function Main {
 
     # Step 2 - Deploy config files
     Deploy-Configs -TargetDir $cfgDir
+
+    # The background opencode service keeps the old env after secrets are
+    # saved; offer a guarded restart (never aborts the install).
+    try {
+        $restart = Read-Host "Restart opencode service now to pick up new credentials? [y/N]"
+        if ($restart -match '^[yY]') {
+            try {
+                & opencode service restart
+                Write-Ok "opencode service restarted."
+                Write-Info "Verify with: opencode mcp list"
+            } catch {
+                Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
+            }
+        } else {
+            Write-Info "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
+        }
+    } catch {
+        Write-Warn "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
+    }
 
     Write-Host ""
     Write-Ok "All done! Run 'opencode' to get started."
