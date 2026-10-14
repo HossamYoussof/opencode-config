@@ -32,26 +32,16 @@ function Get-ConfigDir {
     return "$env:USERPROFILE\.config\opencode"
 }
 
-# Detect best install method
+# Detect install method.
+# NOTE: For opencode v2, Windows package managers (winget/scoop/choco)
+# install the old v1 build and are NOT supported. The only supported
+# native-Windows method is npm.
 function Get-InstallMethod {
-    # 1 - winget (Windows Package Manager)
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        return "winget"
-    }
-    # 2 - scoop
-    if (Get-Command scoop -ErrorAction SilentlyContinue) {
-        return "scoop"
-    }
-    # 3 - choco (Chocolatey)
-    if (Get-Command choco -ErrorAction SilentlyContinue) {
-        return "choco"
-    }
-    # 4 - npm
     if (Get-Command npm -ErrorAction SilentlyContinue) {
         return "npm"
     }
 
-    Write-Err "No supported install method found. Please install winget, scoop, choco, or npm first."
+    Write-Err "npm is required to install opencode v2 on Windows. Please install Node.js/npm from https://nodejs.org/ and re-run this script, OR use WSL and run: curl -fsSL https://opencode.ai/v2/install | bash"
 }
 
 # PATH handling: refresh session PATH + persist well-known dirs on User PATH
@@ -140,17 +130,11 @@ function Install-Opencode {
     Write-Info "Installing opencode via ${Method}..."
 
     switch ($Method) {
-        "winget" {
-            winget install anomalyco.opencode
-        }
-        "scoop" {
-            scoop install opencode
-        }
-        "choco" {
-            choco install opencode
-        }
         "npm" {
-            npm install -g opencode-ai
+            npm install -g @opencode/cli
+        }
+        default {
+            Write-Err "Unsupported install method: $Method. opencode v2 on Windows requires npm (`npm install -g @opencode/cli`). Windows package managers (winget/scoop/choco) install v1 and are not supported."
         }
     }
 

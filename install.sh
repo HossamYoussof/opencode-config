@@ -243,13 +243,13 @@ install_opencode() {
 
   case "$method" in
     curl)
-      curl -fsSL https://opencode.ai/install | bash
+      curl -fsSL https://opencode.ai/v2/install | bash
       ;;
     npm)
-      npm install -g opencode-ai
+      npm install -g @opencode/cli
       ;;
     brew)
-      brew install anomalyco/tap/opencode
+      brew install anomalyco/tap/opencode-v2
       ;;
   esac
 
