@@ -5,6 +5,17 @@
  * Picks the best-fit free opencode models for each agent role in the
  * `opencode` preset of oh-my-opencode-slim.json using deterministic scoring.
  *
+ * Also validates/resolves each role's static `variant` against the picked
+ * models' advertised reasoning options ("test all existed and available
+ * model with its variant updating the new variant").
+ *
+ * Variant validity is derived OFFLINE from models.dev static metadata
+ * (`reasoning` + `reasoning_options`) — no live `opencode run` calls are
+ * made. This keeps CI deterministic, credential-free, and network-light
+ * (one models.dev fetch). A live run-matrix would be non-deterministic,
+ * slow, and require provider auth, so the static check is the intended
+ * interpretation of "test all existed and available" in a CI context.
+ *
  * Usage:
  *   node scripts/refresh-opencode-models.mjs [options]
  *
@@ -12,8 +23,8 @@
  *   --config <path>        Path to oh-my-opencode-slim.json (default: oh-my-opencode-slim.json)
  *   --roles <path>         Path to opencode-model-roles.json (default: scripts/opencode-model-roles.json)
  *   --report <path>        Write markdown change report to this file
- *   --dry-run              Do not write config; print what would change
- *   --check                Exit 1 if changes would be made, 0 if no changes (for CI)
+ *   --dry-run              Do not write config; print what would change (models AND variants)
+ *   --check                Exit 1 if changes would be made (models OR variants), 0 if no changes (for CI)
  *   --help                 Show this help
  */
 
@@ -37,6 +48,303 @@ const ROLE_ORDER = [
   'fixer',
   'observer'
 ];
+
+// ---------------------------------------------------------------------------
+// Variant support
+// ---------------------------------------------------------------------------
+
+/** Default effort ladder for bare `type: 'effort'` (mirrors opencode default _i). */
+const DEFAULT_REASONING_VARIANTS = ['low', 'medium', 'high'];
+
+/**
+ * Per-role variant priority (most-preferred first). Used as the fallback
+ * order when the current preset variant is invalid for the picked models.
+ * - Deep-reasoning roles want high effort first.
+ * - Fast/cheap roles want low effort first.
+ * - Designer wants a balanced default.
+ */
+const ROLE_VARIANT_PRIORITY = {
+  orchestrator: ['high', 'max', 'xhigh', 'medium', 'low'],
+  oracle: ['high', 'max', 'xhigh', 'medium', 'low'],
+  council: ['high', 'max', 'xhigh', 'medium', 'low'],
+  fixer: ['high', 'max', 'xhigh', 'medium', 'low'],
+  librarian: ['low', 'medium', 'high', 'xhigh', 'max'],
+  explorer: ['low', 'medium', 'high', 'xhigh', 'max'],
+  observer: ['low', 'medium', 'high', 'xhigh', 'max'],
+  designer: ['medium', 'low', 'high', 'xhigh', 'max'],
+};
+const DEFAULT_VARIANT_PRIORITY = ['medium', 'high', 'low', 'xhigh', 'max'];
+
+/**
+ * Nearest-variant chains: when the current preset variant is invalid for
+ * the newly picked models, try these neighbours first (hysteresis for the
+ * variant dimension) before falling back to the role priority list.
+ * e.g. max -> xhigh -> high; minimal/min/off -> low.
+ */
+const VARIANT_NEAREST = {
+  max: ['max', 'xhigh', 'high', 'medium', 'low'],
+  xhigh: ['xhigh', 'high', 'max', 'medium', 'low'],
+  high: ['high', 'xhigh', 'max', 'medium', 'low'],
+  medium: ['medium', 'high', 'low', 'xhigh', 'max'],
+  low: ['low', 'medium', 'high', 'xhigh', 'max'],
+  min: ['low', 'medium', 'high', 'xhigh', 'max'],
+  minimal: ['low', 'medium', 'high', 'xhigh', 'max'],
+  minimum: ['low', 'medium', 'high', 'xhigh', 'max'],
+  off: ['low', 'medium', 'high', 'xhigh', 'max'],
+  on: ['high', 'medium', 'low', 'xhigh', 'max'],
+  thinking: ['thinking', 'high', 'max', 'xhigh', 'medium', 'low'],
+};
+
+/** Strip the `opencode/` provider prefix for models.dev comparisons. */
+function stripModelPrefix(id) {
+  if (id == null) return id;
+  const s = String(id);
+  return s.startsWith('opencode/') ? s.slice('opencode/'.length) : s;
+}
+
+/**
+ * Normalize a variant token for comparison.
+ * Lowercases, trims, removes separators, and maps known aliases:
+ * extra-high/very-high/x-high -> xhigh, minimal/minimum/none -> low-ish.
+ */
+function normalizeVariant(v) {
+  if (v == null) return '';
+  let s = String(v).trim().toLowerCase().replace(/[\s_]+/g, '-');
+  s = s.replace(/-+/g, '');
+  const aliases = {
+    'extrahigh': 'xhigh',
+    'veryhigh': 'xhigh',
+    'xh': 'xhigh',
+    'extra': 'xhigh',
+    'minimum': 'minimal',
+    'none': 'off',
+    'disabled': 'off',
+    'enabled': 'on',
+    'maximum': 'max',
+  };
+  return aliases[s] ?? s;
+}
+
+function dedupeLowerList(list) {
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const n = normalizeVariant(item);
+    if (!n || seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+  }
+  return out;
+}
+
+/**
+ * Build the list of variants a model supports, mirroring opencode runtime
+ * (authoritative: fx + VO/Ya for the opencode provider).
+ *
+ * Rules:
+ * - reasoning_options as array of descriptors/string literals:
+ *   string entries are literal variant values; object entries with
+ *   explicit `values` contribute those values verbatim (normalized);
+ *   `{type:'effort'}` without values contributes ['low','medium','high']
+ *   (opencode default _i); every other object without values
+ *   (toggle/boolean/switch, budget_tokens/budget/tokens/max_tokens,
+ *   unknown types) contributes NOTHING. Union all contributions.
+ *   Empty array / missing / {} -> [] (opencode fx(e,[]) -> []).
+ * - reasoning_options as single object: explicit `values` -> verbatim;
+ *   bare `{type:'effort'}` -> ['low','medium','high']; anything else
+ *   (toggle, budget_*, empty {}, unknown) -> [].
+ * - missing/null/'' or any other shape -> [] regardless of `reasoning`.
+ *
+ * NOTE: the `reasoning` boolean does NOT invent variants. A model with
+ * reasoning:true but no usable reasoning_options takes NO variant.
+ */
+function supportedVariants(model) {
+  const ro = model?.reasoning_options ?? model?.reasoningOptions;
+
+  const fromValues = (vals) =>
+    dedupeLowerList((Array.isArray(vals) ? vals : []).filter((v) => typeof v === 'string' || typeof v === 'number'));
+
+  const bareEffortLadder = () => [...DEFAULT_REASONING_VARIANTS];
+
+  const expandDescriptor = (entry) => {
+    if (typeof entry === 'string') return fromValues([entry]);
+    if (entry && typeof entry === 'object') {
+      if (Array.isArray(entry.values) && entry.values.length) {
+        return fromValues(entry.values);
+      }
+      const t = String(entry.type ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+      if (t === 'effort') return bareEffortLadder();
+      // toggle/boolean/switch (Ya() returns [] for non-effort type),
+      // budget_tokens/budget/tokens/max_tokens, unknown types, and
+      // typeless objects all contribute nothing.
+      return [];
+    }
+    return [];
+  };
+
+  if (Array.isArray(ro)) {
+    // models.dev shape: ARRAY of descriptors,
+    // e.g. [{type:"toggle"}] or [{type:"effort",values:[...]}].
+    const union = [];
+    for (const entry of ro) {
+      union.push(...expandDescriptor(entry));
+    }
+    return dedupeLowerList(union);
+  }
+
+  if (ro && typeof ro === 'object') {
+    return expandDescriptor(ro);
+  }
+
+  if (typeof ro === 'string' && ro.trim()) {
+    return fromValues([ro]);
+  }
+
+  return [];
+}
+
+/**
+ * Intersection of picked models' supported variant sets.
+ * Only ever receives non-empty inputs: resolveVariant step 1 returns early
+ * whenever ANY picked model advertises no variants ([]), so every list here
+ * is non-empty. Simply intersects them. The empty-input guard returning []
+ * is retained as a defensive precondition only.
+ */
+function commonVariants(supportedLists) {
+  const nonEmpty = supportedLists.filter((l) => l.length > 0);
+  if (nonEmpty.length === 0) return [];
+  let common = [...nonEmpty[0]];
+  for (const list of nonEmpty.slice(1)) {
+    const set = new Set(list);
+    common = common.filter((v) => set.has(v));
+  }
+  return common;
+}
+
+/**
+ * Resolve which variant a role should use for its picked models.
+ *
+ * @param {object} args - { role, currentVariant, pickedIds, candidatesById }
+ *   pickedIds are prefix-stripped model ids; candidatesById maps stripped
+ *   id -> model object (with reasoning/reasoning_options).
+ * @returns {{ variant, removeVariant, changed, forced, warning }} When
+ *   `removeVariant` is true, the caller must DELETE the role's variant key
+ *   (the resolved `variant` is undefined). Otherwise `variant` is the
+ *   resolved (normalized) variant string, or the current value when kept.
+ *
+ * Logic:
+ * 1. If ANY picked model advertises no variants ([]) -> the role must
+ *    have NO variant key. Omitting a variant always passes at runtime,
+ *    while any non-empty variant fails on a [] model, so a key is only
+ *    safe when EVERY picked model supports variants. With no key present
+ *    -> no change (variant undefined, changed false, warning notes no key
+ *    is needed). With a key present -> remove it (removeVariant true,
+ *    changed true, forced true, warning names the offending model id(s)
+ *    and notes the fallback model advertises no variants). This subsumes
+ *    the primary-empty and all-empty cases.
+ * 2. If current variant is valid for ALL picked models -> keep it
+ *    (hysteresis), no change. (Unreachable with [] present: step 1
+ *    returned already, so every list is non-empty here.)
+ * 3. If no variant key is set (currentVariant undefined/null) -> NEVER
+ *    auto-add: return no change (variant undefined, changed false,
+ *    forced false, warning notes supporting models exist but the key is
+ *    absent). Omitting is always safe, so a keyless role stays keyless.
+ * 4. Else (key present, invalid) fallback: nearest-chain(current) ++
+ *    role-priority, first hit in the common intersection. Marks
+ *    forced=true, changed=true.
+ * 5. If the common intersection is empty -> use the primary model's first
+ *    supported value (forced + warning). Primary is guaranteed non-empty
+ *    here (step 1 returned otherwise), so this always yields a value.
+ */
+function resolveVariant({ role, currentVariant, pickedIds, candidatesById }) {
+  const current = normalizeVariant(currentVariant);
+  const supportedLists = pickedIds.map((id) => {
+    const m = candidatesById.get(stripModelPrefix(id));
+    return supportedVariants(m ?? {});
+  });
+
+  const hasKey = currentVariant !== undefined && currentVariant !== null;
+
+  // 1. ANY picked model takes no variant -> the role must have NO key.
+  // Omitting always passes; any non-empty variant fails on a [] model
+  // (including fallback models), so a key is only safe when EVERY model
+  // supports variants. This subsumes the primary-empty / all-empty cases.
+  const emptyIds = pickedIds.filter((id, i) => (supportedLists[i] ?? []).length === 0);
+  if (emptyIds.length > 0) {
+    const offenders = emptyIds.map((id) => stripModelPrefix(id)).join(', ');
+    if (!hasKey) {
+      return {
+        variant: undefined,
+        removeVariant: false,
+        changed: false,
+        forced: false,
+        warning: `Model(s) ${offenders} advertise(s) no reasoning variants; no variant key needed (omitting is always safe).`,
+      };
+    }
+    return {
+      variant: undefined,
+      removeVariant: true,
+      changed: true,
+      forced: true,
+      warning: `Model(s) ${offenders} advertise(s) no reasoning variants; fallback model advertises no variants; removing variant "${currentVariant}" (variant not supported).`,
+    };
+  }
+
+  const allCompatible = supportedLists.every(
+    (l) => Boolean(current) && l.includes(current)
+  );
+  if (current && allCompatible) {
+    return { variant: currentVariant, removeVariant: false, changed: false, forced: false, warning: null };
+  }
+
+  // 3. Keyless roles stay keyless: omitting is always safe, so never
+  // auto-add a variant from ROLE_VARIANT_PRIORITY. Applies to both the
+  // common-intersection branch and the primary-first fallback below.
+  if (!hasKey) {
+    return {
+      variant: undefined,
+      removeVariant: false,
+      changed: false,
+      forced: false,
+      warning: 'Picked models support reasoning variants but no variant key is set; leaving key absent (omitting is always safe).',
+    };
+  }
+
+  const common = commonVariants(supportedLists);
+  const priority = ROLE_VARIANT_PRIORITY[role] ?? DEFAULT_VARIANT_PRIORITY;
+  const nearest = (current && VARIANT_NEAREST[current]) || [];
+
+  if (common.length > 0) {
+    const ordered = [...nearest, ...priority];
+    const hit = ordered.find((v) => common.includes(normalizeVariant(v)));
+    const chosen = hit != null ? normalizeVariant(hit) : common[0];
+    // Preserve the original casing style? Variants are lowercase by
+    // convention, so emit the normalized lowercase token.
+    const changed = normalizeVariant(chosen) !== current;
+    return {
+      variant: chosen,
+      removeVariant: false,
+      changed,
+      forced: true,
+      warning: null,
+    };
+  }
+
+  // Empty intersection: fall back to the primary model's first value.
+  // Primary is guaranteed non-empty here (step 1 handled the empty case).
+  const primaryFirst = (supportedLists[0] ?? [])[0];
+  if (primaryFirst) {
+    return {
+      variant: primaryFirst,
+      removeVariant: false,
+      changed: normalizeVariant(primaryFirst) !== current,
+      forced: true,
+      warning: `No common variant across picked models; using primary model's "${primaryFirst}".`,
+    };
+  }
+
+  throw new Error('unreachable: primary empty should have returned in step 1');
+}
 
 function log(...args) {
   console.log(...args);
@@ -230,6 +538,14 @@ function formatDiff(oldArr, newArr) {
   return `  - ${oldStr}\n  + ${newStr}`;
 }
 
+function formatVariantDiff(oldV, newV) {
+  const o = oldV ?? '(none)';
+  const n = newV ?? '(none)';
+  if (normalizeVariant(o) === normalizeVariant(n) && o === n) return '  (unchanged)';
+  if (String(o) === String(n)) return '  (unchanged)';
+  return `  - variant: ${JSON.stringify(o)}\n  + variant: ${JSON.stringify(n)}`;
+}
+
 function buildReport(results, configObj) {
   const lines = [];
   lines.push('# Opencode Model Refresh Report');
@@ -242,10 +558,24 @@ function buildReport(results, configObj) {
   for (const r of results) {
     const role = r.role;
     const old = configObj.presets.opencode[role].model;
-    const diff = formatDiff(old, r.picked);
+    // Normalize both sides to prefixed IDs so unchanged models show
+    // unchanged (picked may be stripped while config stores prefixed).
+    const newModels = (r.picked ?? []).map((m) => `opencode/${stripModelPrefix(m)}`);
+    const diff = formatDiff(old, newModels);
+    const oldVariant = configObj.presets.opencode[role].variant;
+    const newVariant = r.removeVariant ? undefined : r.variant;
+    const vdiff = formatVariantDiff(oldVariant, newVariant);
     if (diff !== '  (unchanged)') any = true;
+    if (vdiff !== '  (unchanged)') any = true;
     lines.push(`### ${role}`);
-    lines.push(diff);
+    lines.push(`model: ${diff}`);
+    lines.push(`variant: ${vdiff}`);
+    if (r.variantChanged) {
+      lines.push(`  variant ${JSON.stringify(oldVariant)} → ${JSON.stringify(newVariant)}${r.variantForced ? ' (forced: previous variant unsupported by picked models)' : ''}`);
+    }
+    if (r.variantWarning) {
+      lines.push(`  **VARIANT NOTE**: ${r.variantWarning}`);
+    }
     if (r.sharesWith?.length) {
       lines.push(`  *Shares model(s) with: ${r.sharesWith.join(', ')}*`);
     }
@@ -258,16 +588,21 @@ function buildReport(results, configObj) {
     lines.push('');
   }
   if (!any) {
-    lines.push('*No changes — all roles already optimal*');
+    lines.push('*No changes — all roles already optimal (models and variants)*');
     lines.push('');
   }
   lines.push('## Candidate Pool');
   lines.push('');
-  lines.push('| Model | Context | Output | Attachment | Reasoning | Release |');
-  lines.push('|-------|--------:|-------:|:----------:|:---------:|--------|');
+  lines.push('| Model | Context | Output | Attachment | Reasoning | Variants | Release |');
+  lines.push('|-------|--------:|-------:|:----------:|:---------:|:--------:|--------|');
   for (const m of results[0].allCandidates) {
-    lines.push(`| ${m.id} | ${m.limit.context.toLocaleString()} | ${m.limit.output.toLocaleString()} | ${m.attachment ? '✅' : '❌'} | ${m.reasoning ? '✅' : '❌'} | ${m.release_date || 'unknown'} |`);
+    const vs = supportedVariants(m);
+    lines.push(`| ${m.id} | ${m.limit.context.toLocaleString()} | ${m.limit.output.toLocaleString()} | ${m.attachment ? '✅' : '❌'} | ${m.reasoning ? '✅' : '❌'} | ${vs.length ? vs.join(', ') : '—'} | ${m.release_date || 'unknown'} |`);
   }
+  lines.push('');
+  lines.push('> Note: variant validity is checked offline against models.dev static');
+  lines.push('> `reasoning` + `reasoning_options` metadata (no live `opencode run`');
+  lines.push('> calls), so CI stays deterministic and credential-free.');
   return lines.join('\n');
 }
 
@@ -277,12 +612,15 @@ async function main() {
     console.log(`
 Usage: node scripts/refresh-opencode-models.mjs [options]
 
+Picks top models per role AND validates each role's variant against the
+picked models' supported variants (from models.dev reasoning_options).
+
 Options:
   --config <path>     Path to oh-my-opencode-slim.json (default: ${DEFAULT_CONFIG})
   --roles <path>      Path to opencode-model-roles.json (default: ${DEFAULT_ROLES})
   --report <path>     Write markdown report to file
-  --dry-run           Do not write config; print what would change
-  --check             Exit 1 if changes would be made, 0 if no changes
+  --dry-run           Do not write config; print what would change (models AND variants)
+  --check             Exit 1 if changes would be made (models OR variants), 0 if no changes
   --help              Show this help
 `);
     process.exit(0);
@@ -320,6 +658,8 @@ Options:
     }));
   }
 
+  const candidatesById = new Map(candidates.map((m) => [stripModelPrefix(m.id), m]));
+
   // Pick top N per role with hysteresis (N from role config)
   const results = [];
   const modelToRoles = new Map();
@@ -327,6 +667,7 @@ Options:
     const roleCfg = rolesConfig.roles[role];
     const n = roleCfg.modelCount || 3;
     const current = preset[role]?.model || [];
+    const currentVariant = preset[role]?.variant;
 
     const scored = scoredByRole[role];
     const pin = roleCfg.pin || [];
@@ -336,7 +677,7 @@ Options:
 
     if (pin.length > 0) {
       // Use pinned models if they're still eligible
-      const eligiblePins = pin.filter(p => candidates.some(c => c.id === stripPrefix(p)));
+      const eligiblePins = pin.filter(p => candidates.some(c => c.id === stripModelPrefix(p)));
       if (eligiblePins.length >= n) {
         picked = eligiblePins.slice(0, n);
         pinned = true;
@@ -351,16 +692,20 @@ Options:
       }
     }
 
-    function stripPrefix(id) {
-      return id.startsWith('opencode/') ? id.slice('opencode/'.length) : id;
-    }
-
     if (!picked) {
-      const currentStripped = current.map(stripPrefix);
+      const currentStripped = current.map(stripModelPrefix);
       const missing = currentStripped.some((m, i) => m && !candidates.some(c => c.id === m));
       if (missing) forced = true;
       picked = pickTopN(candidates, scored, currentStripped, roleCfg.keepMargin || 0.15, n);
     }
+
+    // Resolve variant for the picked models.
+    const vr = resolveVariant({
+      role,
+      currentVariant,
+      pickedIds: picked,
+      candidatesById,
+    });
 
     // Track sharing
     for (const m of picked) {
@@ -372,6 +717,12 @@ Options:
       role,
       picked,
       old: current,
+      variant: vr.variant,
+      removeVariant: vr.removeVariant === true,
+      oldVariant: currentVariant,
+      variantChanged: vr.changed,
+      variantForced: vr.forced,
+      variantWarning: vr.warning,
       sharesWith: modelToRoles.get(picked[0])?.filter(r => r !== role) || [],
       forced,
       pinned,
@@ -382,7 +733,12 @@ Options:
   // Build new config (preserve everything else byte-for-byte)
   const newConfig = JSON.parse(configRaw); // preserves key order via parse/stringify
   for (const r of results) {
-    newConfig.presets.opencode[r.role].model = r.picked.map(m => `opencode/${m}`);
+    newConfig.presets.opencode[r.role].model = r.picked.map(m => `opencode/${stripModelPrefix(m)}`);
+    if (r.removeVariant) {
+      delete newConfig.presets.opencode[r.role].variant;
+    } else if (r.variantChanged && r.variant != null) {
+      newConfig.presets.opencode[r.role].variant = r.variant;
+    }
   }
 
   const newRaw = JSON.stringify(newConfig, null, 2); // NO trailing newline
@@ -414,7 +770,28 @@ Options:
   }
 }
 
-main().catch(e => {
-  error(e.message);
-  process.exit(1);
-});
+export {
+  stripModelPrefix,
+  normalizeVariant,
+  supportedVariants,
+  commonVariants,
+  resolveVariant,
+  pickTopN,
+  scoreModel,
+  filterModels,
+  formatDiff,
+  formatVariantDiff,
+  buildReport,
+  ROLE_VARIANT_PRIORITY,
+  VARIANT_NEAREST,
+  DEFAULT_REASONING_VARIANTS,
+};
+
+const invokedAsScript =
+  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedAsScript) {
+  main().catch(e => {
+    error(e.message);
+    process.exit(1);
+  });
+}
