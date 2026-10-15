@@ -4,14 +4,46 @@
 .DESCRIPTION
     Installs opencode and deploys opencode.json + oh-my-opencode-slim.json
     to the global config directory.
+.PARAMETER GithubPat
+    Optional GitHub PAT (SecureString preferred, plain string accepted).
+    Falls back to $env:GITHUB_PAT when omitted.
+.PARAMETER JenkinsUrl
+    Optional Jenkins MCP URL (must look like http(s)://...).
+    Falls back to $env:JENKINS_URL when omitted.
+.PARAMETER JenkinsAuth
+    Optional Jenkins Basic auth value (SecureString preferred, plain string
+    accepted, WITHOUT the 'Basic ' prefix — prefix is stripped if present).
+    Falls back to $env:JENKINS_BASIC_AUTH (or $env:JENKINS_AUTH) when omitted.
+.PARAMETER NonInteractive
+    Skip all interactive prompts (credentials + star). Param/env values are
+    still honored; missing values are skipped with an info message.
+.PARAMETER SkipStar
+    Skip only the "star the repo" prompt.
+.EXAMPLE
+    .\install.ps1 -NonInteractive
+.EXAMPLE
+    .\install.ps1 -JenkinsUrl "https://jenkins.example.com/mcp-server/mcp" -NonInteractive
 #>
 
 #Requires -Version 5.1
+
+param(
+    [Parameter()][object]$GithubPat = $null,
+    [Parameter()][string]$JenkinsUrl = "",
+    [Parameter()][object]$JenkinsAuth = $null,
+    [Parameter()][switch]$NonInteractive,
+    [Parameter()][switch]$SkipStar
+)
 
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = $PSScriptRoot
 $ConfigFiles = @("opencode.json", "oh-my-opencode-slim.json")
+
+# Tracks whether THIS run persisted any MCP secret to User env.
+# Set to $true only inside Save-McpSecretToUserEnv when a new/changed
+# value is actually written. Gates the auto service-restart below.
+$script:SavedSecrets = $false
 
 # Colours
 $Cyan   = "Cyan"
@@ -57,39 +89,6 @@ function Refresh-SessionPath {
     }
 }
 
-function Ensure-OnPath {
-    param([string]$Dir)
-
-    if ([string]::IsNullOrWhiteSpace($Dir)) { return }
-    $Dir = $Dir.Trim().TrimEnd('\', '/')
-    if ([string]::IsNullOrWhiteSpace($Dir)) { return }
-    if (-not (Test-Path -Path $Dir)) { return }
-
-    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-    if ($null -eq $userPath) { $userPath = '' }
-    $found = $false
-    foreach ($p in ($userPath -split ';')) {
-        if ($p.Trim().TrimEnd('\', '/') -ieq $Dir) { $found = $true }
-    }
-    if (-not $found) {
-        if ([string]::IsNullOrWhiteSpace($userPath)) {
-            $userPath = $Dir
-        } else {
-            $userPath = $userPath.TrimEnd(';') + ';' + $Dir
-        }
-        [Environment]::SetEnvironmentVariable('Path', $userPath, 'User')
-        Write-Ok "Added to User PATH: $Dir"
-    }
-
-    $inSession = $false
-    foreach ($p in ($env:PATH -split ';')) {
-        if ($p.Trim().TrimEnd('\', '/') -ieq $Dir) { $inSession = $true }
-    }
-    if (-not $inSession) {
-        $env:PATH = $Dir + ';' + $env:PATH
-    }
-}
-
 function Ensure-InstallLocationsOnPath {
     $candidates = @()
     if ($env:USERPROFILE) {
@@ -109,8 +108,46 @@ function Ensure-InstallLocationsOnPath {
             Write-Warn "Could not determine npm prefix."
         }
     }
-    foreach ($d in ($candidates | Select-Object -Unique)) {
-        Ensure-OnPath $d
+    $candidates = @($candidates | Select-Object -Unique)
+    if ($candidates.Count -eq 0) { return }
+
+    # Single User-PATH registry read; append missing dirs in memory; single
+    # write. Session PATH is updated inline (no registry cost).
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($null -eq $userPath) { $userPath = '' }
+    $known = @()
+    foreach ($p in ($userPath -split ';')) {
+        $t = $p.Trim().TrimEnd('\', '/')
+        if ($t) { $known += $t.ToLowerInvariant() }
+    }
+    $added = @()
+    foreach ($d in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($d)) { continue }
+        $dir = $d.Trim().TrimEnd('\', '/')
+        if ([string]::IsNullOrWhiteSpace($dir)) { continue }
+        if (-not (Test-Path -Path $dir)) { continue }
+        if ($known -notcontains $dir.ToLowerInvariant()) {
+            if ([string]::IsNullOrWhiteSpace($userPath)) {
+                $userPath = $dir
+            } else {
+                $userPath = $userPath.TrimEnd(';') + ';' + $dir
+            }
+            $known += $dir.ToLowerInvariant()
+            $added += $dir
+        }
+        $inSession = $false
+        foreach ($p in ($env:PATH -split ';')) {
+            if ($p.Trim().TrimEnd('\', '/') -ieq $dir) { $inSession = $true; break }
+        }
+        if (-not $inSession) {
+            $env:PATH = $dir + ';' + $env:PATH
+        }
+    }
+    if ($added.Count -gt 0) {
+        [Environment]::SetEnvironmentVariable('Path', $userPath, 'User')
+        foreach ($a in $added) {
+            Write-Ok "Added to User PATH: $a"
+        }
     }
 }
 
@@ -155,20 +192,37 @@ function Install-Opencode {
 # Persist an MCP credential to the User environment without ever baking it
 # into opencode.json. Never writes the value to the console.
 function Save-McpSecretToUserEnv {
-    param([string]$Name, [string]$Value)
+    param([string]$Name, [string]$Value, [switch]$NonInteractive)
 
     if ([string]::IsNullOrWhiteSpace($Name)) { return }
     if ([string]::IsNullOrWhiteSpace($Value)) { return }
     $trimmed = $Value.Trim()
     if ([string]::IsNullOrWhiteSpace($trimmed)) { return }
     $existing = [Environment]::GetEnvironmentVariable($Name, 'User')
-    if (-not [string]::IsNullOrWhiteSpace($existing)) {
-        Write-Warn "$Name already set in User env; update it manually via System settings if needed."
+    if ($existing -ceq $trimmed) {
+        Write-Ok "$Name already up to date in User environment."
+        Set-Item -Path ("Env:" + $Name) -Value $trimmed -ErrorAction SilentlyContinue
         return
+    }
+    if (-not [string]::IsNullOrWhiteSpace($existing)) {
+        if (-not $NonInteractive) {
+            $answer = ""
+            try { $answer = Read-Host ("Overwrite existing $Name" + "? [y/N]") } catch { $answer = "" }
+            if ($answer -notmatch '^[yY]') {
+                Write-Info ("Keeping existing $Name" + "; skipped overwrite.")
+                Set-Item -Path ("Env:" + $Name) -Value $existing -ErrorAction SilentlyContinue
+                return
+            }
+        }
     }
     [Environment]::SetEnvironmentVariable($Name, $trimmed, 'User')
     Set-Item -Path ("Env:" + $Name) -Value $trimmed
-    Write-Ok "Saved $Name to User environment (current session updated)."
+    $script:SavedSecrets = $true
+    if ([string]::IsNullOrWhiteSpace($existing)) {
+        Write-Ok "Saved $Name to User environment (current session updated)."
+    } else {
+        Write-Ok "Updated $Name in User environment (old value replaced; current session updated)."
+    }
 }
 
 # Convert a SecureString to plaintext for env persistence only.
@@ -193,69 +247,160 @@ function Convert-SecureStringToPlainText {
     }
 }
 
+# Normalize a -GithubPat/-JenkinsAuth argument that may be a SecureString or
+# a plain string. Returns plaintext the caller must clear ASAP. Never logs it.
+function ConvertTo-PlainSecret {
+    param([object]$Secret)
+
+    if ($null -eq $Secret) { return "" }
+    if ($Secret -is [System.Security.SecureString]) {
+        return Convert-SecureStringToPlainText -Secure $Secret
+    }
+    if ($Secret -is [string]) { return $Secret }
+    return [string]$Secret
+}
+
+# Single place for trim + 'Basic ' prefix stripping (auth values are stored
+# WITHOUT the prefix). Returns "" for null/empty.
+function Normalize-BasicAuthValue {
+    param([string]$Value)
+
+    if ($null -eq $Value) { return "" }
+    $trimmed = $Value.Trim()
+    if ([string]::IsNullOrWhiteSpace($trimmed)) { return "" }
+    if ($trimmed -imatch '^\s*Basic\s+(.+)$') {
+        $trimmed = $Matches[1].Trim()
+    } elseif ($trimmed -ieq 'Basic') {
+        # Bare "Basic" with no credentials is not a valid auth value.
+        return ""
+    }
+    return $trimmed
+}
+
+# Jenkins URL sanity check (non-empty http(s) URL). Not a reachability test.
+function Test-HttpUrl {
+    param([string]$Url)
+
+    if ([string]::IsNullOrWhiteSpace($Url)) { return $false }
+    return ($Url.Trim() -match '^https?://\S')
+}
+
 # Prompt for optional credentials and stage a customized opencode.json.
 # All prompts are optional (Enter to skip). Never aborts the install.
+# Secrets go to User env only; the JSON keeps {env:...} placeholders.
 function Get-CustomizedOpencodeJson {
-    param([string]$SrcPath)
+    param(
+        [string]$SrcPath,
+        [object]$GithubPatParam = $null,
+        [string]$JenkinsUrlParam = "",
+        [object]$JenkinsAuthParam = $null,
+        [switch]$NonInteractive
+    )
 
+    if (-not (Test-Path -Path $SrcPath)) { return $SrcPath }
+
+    $staging = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath ("opencode.staged." + $PID + ".json")
+    $keepStaging = $false
+    # Plaintext secrets: cleared in finally + right after saving. Never logged.
+    $githubPat = ""
+    $jenkinsUrl = ""
+    $jenkinsAuth = ""
     try {
-        if (-not (Test-Path -Path $SrcPath)) { return $SrcPath }
-
-        $tempDir = [IO.Path]::GetTempPath()
-        $staging = Join-Path -Path $tempDir -ChildPath ("opencode.staged." + $PID + ".json")
         Copy-Item -Path $SrcPath -Destination $staging -Force
+
+        # Parse ONCE; reuse for the prompt default and the patch below.
+        try {
+            $json = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            Write-Warn "Could not parse opencode.json; deploying it unmodified."
+            return $SrcPath
+        }
 
         # Current Jenkins URL default (shown in the prompt).
         $defaultJenkinsUrl = "https://jenkins-host/mcp-server/mcp"
-        try {
-            $preview = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-            if ($preview.mcp -and $preview.mcp.servers -and $preview.mcp.servers.jenkins -and $preview.mcp.servers.jenkins.url) {
-                $defaultJenkinsUrl = [string]$preview.mcp.servers.jenkins.url
+        if ($json.mcp -and $json.mcp.servers -and $json.mcp.servers.jenkins -and $json.mcp.servers.jenkins.url) {
+            $defaultJenkinsUrl = [string]$json.mcp.servers.jenkins.url
+        }
+
+        # Resolve values: explicit param > process env > interactive prompt.
+        $githubPat = ConvertTo-PlainSecret -Secret $GithubPatParam
+        if ([string]::IsNullOrWhiteSpace($githubPat) -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_PAT)) {
+            $githubPat = $env:GITHUB_PAT
+            Write-Info "Using GITHUB_PAT from process environment."
+        }
+
+        if ($null -eq $JenkinsUrlParam) { $JenkinsUrlParam = "" }
+        $jenkinsUrl = $JenkinsUrlParam.Trim()
+        if ([string]::IsNullOrWhiteSpace($jenkinsUrl)) {
+            if (-not [string]::IsNullOrWhiteSpace($env:JENKINS_URL)) {
+                $jenkinsUrl = $env:JENKINS_URL.Trim()
+                Write-Info "Using JENKINS_URL from process environment."
+            } elseif (-not [string]::IsNullOrWhiteSpace($env:JENKINS_MCP_URL)) {
+                $jenkinsUrl = $env:JENKINS_MCP_URL.Trim()
+                Write-Info "Using JENKINS_MCP_URL from process environment."
             }
-        } catch {
-            # Ignore preview failures; patch step below will warn if JSON is invalid.
+        }
+
+        $jenkinsAuth = ConvertTo-PlainSecret -Secret $JenkinsAuthParam
+        if ([string]::IsNullOrWhiteSpace($jenkinsAuth)) {
+            if (-not [string]::IsNullOrWhiteSpace($env:JENKINS_BASIC_AUTH)) {
+                $jenkinsAuth = $env:JENKINS_BASIC_AUTH
+                Write-Info "Using JENKINS_BASIC_AUTH from process environment."
+            } elseif (-not [string]::IsNullOrWhiteSpace($env:JENKINS_AUTH)) {
+                $jenkinsAuth = $env:JENKINS_AUTH
+                Write-Info "Using JENKINS_AUTH from process environment."
+            }
         }
 
         # Optional prompts. Empty/error just skips customization.
         # Secrets use SecureString so keystrokes are not echoed; Jenkins URL
         # is not secret and stays a normal Read-Host.
-        $githubPat = ""
-        $jenkinsUrl = ""
-        $jenkinsAuth = ""
-        $githubSecure = $null
-        $jenkinsAuthSecure = $null
-        try { $githubSecure = Read-Host "GitHub PAT (optional, Enter to skip)" -AsSecureString } catch { $githubSecure = $null }
-        try { $jenkinsUrl = Read-Host ("Jenkins URL (optional, Enter to keep [$defaultJenkinsUrl])") } catch { $jenkinsUrl = "" }
-        try { $jenkinsAuthSecure = Read-Host "Jenkins Basic auth value, user:token base64 WITHOUT 'Basic ' prefix (optional, Enter to skip)" -AsSecureString } catch { $jenkinsAuthSecure = $null }
-        try {
-            if ($null -ne $githubSecure) { $githubPat = Convert-SecureStringToPlainText -Secure $githubSecure }
-        } catch { $githubPat = "" }
-        try {
-            if ($null -ne $jenkinsAuthSecure) { $jenkinsAuth = Convert-SecureStringToPlainText -Secure $jenkinsAuthSecure }
-        } catch { $jenkinsAuth = "" }
-        $githubSecure = $null
-        $jenkinsAuthSecure = $null
-        if ($null -eq $githubPat) { $githubPat = "" }
-        if ($null -eq $jenkinsUrl) { $jenkinsUrl = "" }
-        if ($null -eq $jenkinsAuth) { $jenkinsAuth = "" }
+        if ([string]::IsNullOrWhiteSpace($githubPat)) {
+            if ($NonInteractive) {
+                Write-Info "Skipping GitHub PAT prompt (non-interactive); pass -GithubPat or set GITHUB_PAT to include it."
+            } else {
+                try {
+                    $githubSecure = Read-Host "GitHub PAT (optional, Enter to skip)" -AsSecureString
+                    if ($null -ne $githubSecure) { $githubPat = Convert-SecureStringToPlainText -Secure $githubSecure }
+                    $githubSecure = $null
+                } catch { $githubPat = "" }
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($jenkinsUrl)) {
+            if ($NonInteractive) {
+                Write-Info "Skipping Jenkins URL prompt (non-interactive); pass -JenkinsUrl or set JENKINS_URL to include it."
+            } else {
+                try { $jenkinsUrl = Read-Host ("Jenkins URL (optional, Enter to keep [$defaultJenkinsUrl])") } catch { $jenkinsUrl = "" }
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($jenkinsAuth)) {
+            if ($NonInteractive) {
+                Write-Info "Skipping Jenkins auth prompt (non-interactive); pass -JenkinsAuth or set JENKINS_BASIC_AUTH to include it."
+            } else {
+                try {
+                    $jenkinsAuthSecure = Read-Host "Jenkins Basic auth value, user:token base64 WITHOUT 'Basic ' prefix (optional, Enter to skip)" -AsSecureString
+                    if ($null -ne $jenkinsAuthSecure) { $jenkinsAuth = Convert-SecureStringToPlainText -Secure $jenkinsAuthSecure }
+                    $jenkinsAuthSecure = $null
+                } catch { $jenkinsAuth = "" }
+            }
+        }
+        if ($null -eq $githubPat) { $githubPat = "" } else { $githubPat = $githubPat.Trim() }
+        if ($null -eq $jenkinsUrl) { $jenkinsUrl = "" } else { $jenkinsUrl = $jenkinsUrl.Trim() }
+        $jenkinsAuth = Normalize-BasicAuthValue -Value $jenkinsAuth
 
         $hasGithubPat = -not [string]::IsNullOrWhiteSpace($githubPat)
         $hasJenkinsUrl = -not [string]::IsNullOrWhiteSpace($jenkinsUrl)
         $hasJenkinsAuth = -not [string]::IsNullOrWhiteSpace($jenkinsAuth)
 
-        if (-not $hasGithubPat -and -not $hasJenkinsUrl -and -not $hasJenkinsAuth) {
-            Write-Info "No custom credentials entered; deploying opencode.json as-is."
-            $githubPat = ""
-            $jenkinsAuth = ""
-            return $staging
+        # Light validation before saving: warn-and-skip bad values.
+        if ($hasJenkinsUrl -and -not (Test-HttpUrl -Url $jenkinsUrl)) {
+            Write-Warn "Jenkins URL does not look like http(s)://... - skipping URL customization."
+            $hasJenkinsUrl = $false
+            $jenkinsUrl = ""
         }
 
-        try {
-            $json = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        } catch {
-            Write-Warn "Could not parse opencode.json; deploying it unmodified."
-            $githubPat = ""
-            $jenkinsAuth = ""
+        if (-not $hasGithubPat -and -not $hasJenkinsUrl -and -not $hasJenkinsAuth) {
+            Write-Info "No custom credentials entered; deploying opencode.json as-is."
             return $SrcPath
         }
 
@@ -263,41 +408,57 @@ function Get-CustomizedOpencodeJson {
         # (Bearer {env:GITHUB_PAT} / Basic {env:JENKINS_BASIC_AUTH}) stay as-is
         # in the template; raw values go to User env only.
         if ($hasGithubPat) {
-            Save-McpSecretToUserEnv -Name 'GITHUB_PAT' -Value $githubPat
+            Save-McpSecretToUserEnv -Name 'GITHUB_PAT' -Value $githubPat -NonInteractive:$NonInteractive
         }
-
+        $githubPat = ""
         if ($hasJenkinsAuth) {
-            $authValue = $jenkinsAuth.Trim()
-            if ($authValue -imatch '^\s*Basic\s+(.+)$') {
-                $authValue = $Matches[1].Trim()
-            }
-            Save-McpSecretToUserEnv -Name 'JENKINS_BASIC_AUTH' -Value $authValue
-            $authValue = ""
+            Save-McpSecretToUserEnv -Name 'JENKINS_BASIC_AUTH' -Value $jenkinsAuth -NonInteractive:$NonInteractive
         }
+        $jenkinsAuth = ""
 
+        $jsonDirty = $false
         if (($hasJenkinsUrl -or $hasJenkinsAuth) -and $json.mcp -and $json.mcp.servers -and $json.mcp.servers.jenkins) {
             if ($hasJenkinsUrl) {
-                $json.mcp.servers.jenkins.url = $jenkinsUrl.Trim()
+                $json.mcp.servers.jenkins.url = $jenkinsUrl
+                $jsonDirty = $true
             }
             if ($json.mcp.servers.jenkins.PSObject.Properties['disabled']) {
                 $null = $json.mcp.servers.jenkins.PSObject.Properties.Remove('disabled')
+                $jsonDirty = $true
             }
+        }
+
+        if (-not $jsonDirty) {
+            # Only secrets were provided; JSON needs no patch (placeholders stay).
+            return $SrcPath
         }
 
         $json | ConvertTo-Json -Depth 10 | Set-Content -Path $staging -Encoding UTF8
         Write-Ok "Staged customized opencode.json."
-        $githubPat = ""
-        $jenkinsAuth = ""
+        $keepStaging = $true
         return $staging
     } catch {
         Write-Warn "Skipping credential customization; deploying opencode.json as-is."
         return $SrcPath
+    } finally {
+        # Clear plaintext ASAP; drop the staging copy unless the caller needs it.
+        $githubPat = ""
+        $jenkinsAuth = ""
+        if (-not $keepStaging -and $staging -and (Test-Path -Path $staging)) {
+            Remove-Item -Path $staging -ErrorAction SilentlyContinue
+        }
     }
 }
 
 # Deploy config files
 function Deploy-Configs {
-    param([string]$TargetDir)
+    param(
+        [string]$TargetDir,
+        [object]$GithubPat = $null,
+        [string]$JenkinsUrl = "",
+        [object]$JenkinsAuth = $null,
+        [switch]$NonInteractive
+    )
 
     Write-Info "Config directory: $TargetDir"
 
@@ -306,7 +467,7 @@ function Deploy-Configs {
     $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 
     $opencodeSrc = Join-Path -Path $ScriptDir -ChildPath "opencode.json"
-    $stagedOpencodeJson = Get-CustomizedOpencodeJson -SrcPath $opencodeSrc
+    $stagedOpencodeJson = Get-CustomizedOpencodeJson -SrcPath $opencodeSrc -GithubPatParam $GithubPat -JenkinsUrlParam $JenkinsUrl -JenkinsAuthParam $JenkinsAuth -NonInteractive:$NonInteractive
 
     foreach ($file in $ConfigFiles) {
         $src = Join-Path -Path $ScriptDir -ChildPath $file
@@ -353,40 +514,59 @@ function Main {
     Install-Opencode -Method $method
 
     # Step 2 - Deploy config files
-    Deploy-Configs -TargetDir $cfgDir
+    Deploy-Configs -TargetDir $cfgDir -GithubPat $GithubPat -JenkinsUrl $JenkinsUrl -JenkinsAuth $JenkinsAuth -NonInteractive:$NonInteractive
 
-    # The background opencode service keeps the old env after secrets are
-    # saved; offer a guarded restart (never aborts the install).
-    try {
-        $restart = Read-Host "Restart opencode service now to pick up new credentials? [y/N]"
-        if ($restart -match '^[yY]') {
-            try {
-                & opencode service restart
-                Write-Ok "opencode service restarted."
-                Write-Info "Verify with: opencode mcp list"
-            } catch {
+    # This installer session already has new secrets in $env:, so a restart
+    # from here hands them to the background service directly.
+    # NOTE: native-command nonzero exits do NOT throw under
+    # $ErrorActionPreference='Stop' in 5.1, so check $LASTEXITCODE explicitly
+    # and never abort the install here.
+    # Only auto-restart when THIS run actually persisted a secret
+    # ($script:SavedSecrets); inherited session env alone must not trigger it.
+    if ($script:SavedSecrets) {
+        Write-Info "MCP secrets are set in this session — restarting the background service so it picks them up..."
+        try {
+            $global:LASTEXITCODE = $null
+            & opencode service restart
+            if (($null -ne $LASTEXITCODE) -and ($LASTEXITCODE -eq 0)) {
+                Write-Ok "opencode service restarted with the new credentials."
+                Write-Info "Verifying MCP servers..."
+                $global:LASTEXITCODE = $null
+                & opencode mcp list
+                if (($null -eq $LASTEXITCODE) -or ($LASTEXITCODE -ne 0)) {
+                    Write-Warn "Could not list MCP servers — run 'opencode mcp list' manually to verify."
+                }
+            } else {
                 Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
             }
-        } else {
-            Write-Info "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
+        } catch {
+            Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
         }
-    } catch {
-        Write-Warn "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
+        Write-Warn "This terminal still has the old env — open a new terminal so it picks up the new User environment."
+    } else {
+        Write-Info "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
     }
 
     Write-Host ""
     Write-Ok "All done! Run 'opencode' to get started."
     Write-Host ""
 
-    $star = Read-Host "Star the repo on GitHub if you find it useful? [y/N]"
+    if ($SkipStar -or $NonInteractive) {
+        Write-Info "Skipping star prompt."
+        Write-Host ""
+        return
+    }
+    try { $star = Read-Host "Star the repo on GitHub if you find it useful? [y/N]" } catch { $star = "" }
     if ($star -match '^[yY]') {
         $starred = $false
         $gh = Get-Command gh -ErrorAction SilentlyContinue
         if ($gh) {
+            $global:LASTEXITCODE = $null
             gh auth status 2>$null
-            if ($LASTEXITCODE -eq 0) {
+            if (($null -ne $LASTEXITCODE) -and ($LASTEXITCODE -eq 0)) {
+                $global:LASTEXITCODE = $null
                 gh api -X PUT "user/starred/HossamYoussof/opencode-config" --silent 2>$null
-                if ($LASTEXITCODE -eq 0) {
+                if (($null -ne $LASTEXITCODE) -and ($LASTEXITCODE -eq 0)) {
                     Write-Ok "Starred the repo."
                     $starred = $true
                 }

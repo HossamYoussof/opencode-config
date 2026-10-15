@@ -59,12 +59,20 @@ git clone https://github.com/HossamYoussof/opencode-config.git opencode-config &
 
 Install method auto-detected in order: **curl** → **npm** → **brew** (macOS only).
 
+Flags: `--non-interactive` (read `GITHUB_PAT` / `JENKINS_URL` / `JENKINS_BASIC_AUTH` from env, never prompt) and `--skip-mcp` (skip credentials entirely).
+
 ### Windows (PowerShell)
 
 ```powershell
 git clone https://github.com/HossamYoussof/opencode-config.git opencode-config; cd opencode-config
 .\install.ps1
+# Non-interactive (skips credential + star prompts; honors params/env):
+# .\install.ps1 -NonInteractive
+# .\install.ps1 -JenkinsUrl "https://jenkins.example.com/mcp-server/mcp" -NonInteractive
+# .\install.ps1 -SkipStar
 ```
+
+`install.ps1` also accepts `-GithubPat` / `-JenkinsAuth` (SecureString preferred, plain string works) and falls back to `GITHUB_PAT` / `JENKINS_URL` (`JENKINS_MCP_URL`) / `JENKINS_BASIC_AUTH` (`JENKINS_AUTH`) from the process environment.
 
 Native Windows installs via **npm only** (`npm install -g @opencode/cli`). Windows package managers (winget/scoop/choco) install the old v1 build and are not supported — use WSL + `install.sh` if you need the curl method.
 
@@ -72,7 +80,7 @@ The scripts will:
 1. Install opencode if not already present (`install.sh`: curl → npm → brew on macOS; `install.ps1`: npm only)
 2. Optionally prompt for credentials — GitHub PAT + Jenkins URL/auth (Enter to skip). Secrets are saved to your shell rc (`~/.zshrc`/`~/.bashrc`) or User env (Windows) and exported to the session; they are **never** baked into `opencode.json`, which keeps `{env:GITHUB_PAT}` / `{env:JENKINS_BASIC_AUTH}` placeholders. Only the non-secret Jenkins URL is patched into the deployed JSON (and `disabled` is removed when URL or auth is provided).
 3. Copy config files to the global config directory, backing up any existing configs to `.bak.<timestamp>` first
-4. Print next steps and offer to restart the service
+4. Auto-restart the background service when this run persisted a secret (`install.sh`: SECRETS_SAVED_THIS_RUN; `install.ps1`: $script:SavedSecrets), otherwise print the manual restart hint.
 
 Post-install, reload your shell and verify:
 
