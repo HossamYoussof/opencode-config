@@ -40,7 +40,8 @@
       "figma": {
         "type": "remote",
         "url": "http://127.0.0.1:3845/mcp",
-        "oauth": false
+        "oauth": false,
+        "disabled": true
       },
       "firebase": {
         "type": "local",
@@ -63,7 +64,8 @@
       },
       "sentry": {
         "type": "remote",
-        "url": "https://mcp.sentry.dev/mcp"
+        "url": "https://mcp.sentry.dev/mcp",
+        "disabled": true
       },
       "luciq": {
         "type": "remote",
