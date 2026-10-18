@@ -12,7 +12,7 @@
     Falls back to $env:JENKINS_URL when omitted.
 .PARAMETER JenkinsAuth
     Optional Jenkins Basic auth value (SecureString preferred, plain string
-    accepted, WITHOUT the 'Basic ' prefix — prefix is stripped if present).
+    accepted, WITHOUT the 'Basic ' prefix - prefix is stripped if present).
     Falls back to $env:JENKINS_BASIC_AUTH (or $env:JENKINS_AUTH) when omitted.
 .PARAMETER NonInteractive
     Skip all interactive prompts (credentials + star). Param/env values are
@@ -524,7 +524,7 @@ function Main {
     # Only auto-restart when THIS run actually persisted a secret
     # ($script:SavedSecrets); inherited session env alone must not trigger it.
     if ($script:SavedSecrets) {
-        Write-Info "MCP secrets are set in this session — restarting the background service so it picks them up..."
+        Write-Info "MCP secrets are set in this session - restarting the background service so it picks them up..."
         try {
             $global:LASTEXITCODE = $null
             & opencode service restart
@@ -534,7 +534,7 @@ function Main {
                 $global:LASTEXITCODE = $null
                 & opencode mcp list
                 if (($null -eq $LASTEXITCODE) -or ($LASTEXITCODE -ne 0)) {
-                    Write-Warn "Could not list MCP servers — run 'opencode mcp list' manually to verify."
+                    Write-Warn "Could not list MCP servers - run 'opencode mcp list' manually to verify."
                 }
             } else {
                 Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
@@ -542,7 +542,7 @@ function Main {
         } catch {
             Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
         }
-        Write-Warn "This terminal still has the old env — open a new terminal so it picks up the new User environment."
+        Write-Warn "This terminal still has the old env - open a new terminal so it picks up the new User environment."
     } else {
         Write-Info "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
     }
