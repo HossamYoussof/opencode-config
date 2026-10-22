@@ -1,6 +1,23 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
   "preset": "opencode",
+  "compactSidebar": true,
+  "stripOrchestratorModel": false,
+  "routingBlock": true,
+  "autoUpdate": true,
+  "image_routing": "auto",
+  "deepworkGuardMode": "shadow",
+  "disabled_agents": [],
+  "disabled_mcps": [],
+  "disabled_tools": [],
+  "disabled_skills": [],
+  "disabled_hooks": [],
+  "disabled_commands": [],
+  "multiplexer": {
+    "type": "none",
+    "layout": "main-vertical",
+    "main_pane_size": 60
+  },
   "presets": {
     "openai": {
       "orchestrator": {
@@ -12,7 +29,10 @@
         "mcps": [
           "*",
           "!context7"
-        ]
+        ],
+        "displayName": "Orchestrator",
+        "color": "primary",
+        "description": "Primary delegation agent with full skill access"
       },
       "oracle": {
         "model": "openai/gpt-5.6-sol",
@@ -20,7 +40,10 @@
         "skills": [
           "simplify"
         ],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Oracle",
+        "color": "accent",
+        "description": "Deep reasoning and architectural decisions"
       },
       "librarian": {
         "model": "openai/gpt-5.6-luna",
@@ -29,25 +52,37 @@
         "mcps": [
           "context7",
           "gh_grep"
-        ]
+        ],
+        "displayName": "Librarian",
+        "color": "info",
+        "description": "Research and documentation lookup"
       },
       "explorer": {
         "model": "openai/gpt-5.6-luna",
         "variant": "low",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Explorer",
+        "color": "success",
+        "description": "Codebase exploration and search"
       },
       "designer": {
         "model": "openai/gpt-5.6-luna",
         "variant": "medium",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Designer",
+        "color": "warning",
+        "description": "UI/UX design and visual implementation"
       },
       "fixer": {
         "model": "openai/gpt-5.6-luna",
         "variant": "high",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Fixer",
+        "color": "error",
+        "description": "Bug fixes and implementation tasks"
       }
     },
     "opencode-go": {
@@ -60,7 +95,10 @@
         "mcps": [
           "*",
           "!context7"
-        ]
+        ],
+        "displayName": "Orchestrator",
+        "color": "primary",
+        "description": "Primary delegation agent with full skill access"
       },
       "oracle": {
         "model": "opencode-go/qwen3.7-max",
@@ -68,7 +106,10 @@
         "skills": [
           "simplify"
         ],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Oracle",
+        "color": "accent",
+        "description": "Deep reasoning and architectural decisions"
       },
       "librarian": {
         "model": "opencode-go/deepseek-v4-flash",
@@ -77,37 +118,58 @@
         "mcps": [
           "context7",
           "gh_grep"
-        ]
+        ],
+        "displayName": "Librarian",
+        "color": "info",
+        "description": "Research and documentation lookup"
       },
       "explorer": {
         "model": "opencode-go/deepseek-v4-flash",
         "variant": "high",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Explorer",
+        "color": "success",
+        "description": "Codebase exploration and search"
       },
       "designer": {
         "model": "opencode-go/kimi-k2.7-code",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Designer",
+        "color": "warning",
+        "description": "UI/UX design and visual implementation"
       },
       "fixer": {
         "model": "opencode-go/deepseek-v4-flash",
         "variant": "high",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Fixer",
+        "color": "error",
+        "description": "Bug fixes and implementation tasks"
       },
       "observer": {
         "model": "opencode-go/mimo-v2.5",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Observer",
+        "color": "secondary",
+        "description": "Image analysis and vision tasks"
       }
     },
     "opencode": {
       "orchestrator": {
         "model": [
           "opencode/nemotron-3-ultra-free",
-          "opencode/beam-free",
-          "opencode/nemotron-3.5-super-vl-free"
+          {
+            "id": "opencode/beam-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/nemotron-3.5-super-vl-free",
+            "variant": "high"
+          }
         ],
         "skills": [
           "*"
@@ -115,78 +177,141 @@
         "mcps": [
           "*",
           "!context7"
-        ]
+        ],
+        "displayName": "Orchestrator",
+        "color": "primary",
+        "description": "Primary delegation agent with full skill access"
       },
       "oracle": {
         "model": [
           "opencode/big-pickle",
           "opencode/nemotron-3-ultra-free",
-          "opencode/longcat-2.5-preview-free"
+          {
+            "id": "opencode/beam-free",
+            "variant": "high"
+          }
         ],
         "skills": [
           "simplify"
         ],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Oracle",
+        "color": "accent",
+        "description": "Deep reasoning and architectural decisions"
       },
       "council": {
         "model": [
           "opencode/nemotron-3-ultra-free",
-          "opencode/space-bunny-free",
-          "opencode/longcat-2.5-preview-free"
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/beam-free",
+            "variant": "high"
+          }
         ],
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Council",
+        "color": "accent",
+        "description": "Multi-perspective deliberation"
       },
       "librarian": {
         "model": [
-          "opencode/mimo-v2.6-flash-free",
-          "opencode/nemotron-3-ultra-free",
-          "opencode/longcat-2.5-preview-free"
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "low"
+          },
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
+            "variant": "low"
+          },
+          "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [],
         "mcps": [
           "websearch",
           "context7",
           "gh_grep"
-        ]
+        ],
+        "displayName": "Librarian",
+        "color": "info",
+        "description": "Research and documentation lookup"
       },
       "explorer": {
         "model": [
-          "opencode/mimo-v2.6-flash-free",
-          "opencode/nemotron-3-ultra-free",
-          "opencode/longcat-2.5-preview-free"
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "low"
+          },
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
+            "variant": "low"
+          },
+          "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Explorer",
+        "color": "success",
+        "description": "Codebase exploration and search"
       },
       "designer": {
         "model": [
-          "opencode/nemotron-3.5-super-vl-free",
-          "opencode/space-bunny-free",
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "medium"
+          },
+          {
+            "id": "opencode/nemotron-3.5-super-vl-free",
+            "variant": "medium"
+          },
           "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [
           "agent-browser"
         ],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Designer",
+        "color": "warning",
+        "description": "UI/UX design and visual implementation"
       },
       "fixer": {
         "model": [
-          "opencode/space-bunny-free",
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "high"
+          },
           "opencode/nemotron-3-ultra-free",
-          "opencode/deepseek-v4.1-flash-free"
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
+            "variant": "high"
+          }
         ],
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Fixer",
+        "color": "error",
+        "description": "Bug fixes and implementation tasks"
       },
       "observer": {
         "model": [
-          "opencode/mimo-v2.6-flash-free",
-          "opencode/nemotron-3-ultra-free",
-          "opencode/longcat-2.5-preview-free"
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "low"
+          },
+          "opencode/nemotron-3.5-lightning-free",
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
+            "variant": "low"
+          }
         ],
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Observer",
+        "color": "secondary",
+        "description": "Image analysis and vision tasks"
       }
     },
     "poe": {
@@ -199,7 +324,10 @@
         "mcps": [
           "*",
           "!context7"
-        ]
+        ],
+        "displayName": "Orchestrator",
+        "color": "primary",
+        "description": "Primary delegation agent with full skill access"
       },
       "oracle": {
         "model": "poe/anthropic/claude-opus-4.8",
@@ -207,7 +335,10 @@
         "skills": [
           "simplify"
         ],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Oracle",
+        "color": "accent",
+        "description": "Deep reasoning and architectural decisions"
       },
       "librarian": {
         "model": "poe/anthropic/claude-haiku-4.5",
@@ -216,30 +347,45 @@
         "mcps": [
           "context7",
           "gh_grep"
-        ]
+        ],
+        "displayName": "Librarian",
+        "color": "info",
+        "description": "Research and documentation lookup"
       },
       "explorer": {
         "model": "poe/anthropic/claude-haiku-4.5",
         "variant": "low",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Explorer",
+        "color": "success",
+        "description": "Codebase exploration and search"
       },
       "designer": {
         "model": "poe/anthropic/claude-haiku-4.5",
         "variant": "medium",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Designer",
+        "color": "warning",
+        "description": "UI/UX design and visual implementation"
       },
       "fixer": {
         "model": "poe/anthropic/claude-sonnet-4.6",
         "variant": "high",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Fixer",
+        "color": "error",
+        "description": "Bug fixes and implementation tasks"
       },
       "observer": {
         "model": "poe/openai/gpt-5.4-mini",
         "skills": [],
-        "mcps": []
+        "mcps": [],
+        "displayName": "Observer",
+        "color": "secondary",
+        "description": "Image analysis and vision tasks"
       }
     }
   }

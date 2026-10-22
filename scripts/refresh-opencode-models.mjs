@@ -125,6 +125,49 @@ function normalizeVariant(v) {
   return aliases[s] ?? s;
 }
 
+/**
+ * Parse a model array that may contain strings or {id, variant} objects.
+ * Returns array of {id: string, variant: string|null} with prefix stripped.
+ */
+function parseModelArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(m => {
+    if (typeof m === 'string') {
+      return { id: stripModelPrefix(m), variant: null };
+    }
+    if (m && typeof m === 'object' && typeof m.id === 'string') {
+      return { id: stripModelPrefix(m.id), variant: m.variant ? normalizeVariant(m.variant) : null };
+    }
+    return { id: stripModelPrefix(String(m)), variant: null };
+  });
+}
+
+/**
+ * Serialize parsed model array back to config format (strings or objects).
+ * Always emits the `opencode/` provider prefix exactly once, so callers may
+ * pass ids that are either bare or already prefixed (e.g. pins).
+ * Agent-level variants are handled separately by the writer, so a model
+ * without a per-model variant is emitted as a plain string.
+ */
+function serializeModelArray(parsedModels) {
+  return parsedModels.map(({ id, variant }) => {
+    const prefixed = `opencode/${stripModelPrefix(id)}`;
+    if (variant) return { id: prefixed, variant };
+    return prefixed;
+  });
+}
+
+/**
+ * Pick best variant for a model given its supported variants and role priority.
+ * Returns normalized variant string or null.
+ */
+function pickBestVariant(supported, role) {
+  if (!supported?.length) return null;
+  const priority = ROLE_VARIANT_PRIORITY[role] ?? DEFAULT_VARIANT_PRIORITY;
+  const hit = priority.find(v => supported.includes(normalizeVariant(v)));
+  return hit ? normalizeVariant(hit) : supported[0];
+}
+
 function dedupeLowerList(list) {
   const seen = new Set();
   const out = [];
@@ -488,7 +531,13 @@ function scoreModel(model, roleConfig, global) {
 }
 
 function pickTopN(models, scored, currentModels, keepMargin, n) {
-  const sorted = [...scored].sort((a, b) => b.score - a.score);
+  // Score descending, then model id ascending. The id tiebreaker matters:
+  // several role profiles produce exact float ties (e.g. beam-free and
+  // nemotron-3.5-super-vl-free), and without it the fallback order would
+  // depend on the models.dev key iteration order, which is not stable.
+  const sorted = [...scored].sort(
+    (a, b) => b.score - a.score || a.model.id.localeCompare(b.model.id)
+  );
   if (sorted.length === 0) return [];
 
   // Return up to n models, or all available if fewer
@@ -504,7 +553,7 @@ function pickTopN(models, scored, currentModels, keepMargin, n) {
     const primaryScored = scored.find(s => s.model.id === currentPrimary);
     if (primaryScored && (sorted[0].score - primaryScored.score) <= keepMargin) {
       // Keep current primary, fill rest with best different models
-      const others = scored.filter(s => s.model.id !== currentPrimary).slice(0, n - 1);
+      const others = sorted.filter(s => s.model.id !== currentPrimary).slice(0, n - 1);
       return [currentPrimary, ...others.map(o => o.model.id)];
     }
   }
@@ -532,8 +581,9 @@ function loadRoles(path) {
 }
 
 function formatDiff(oldArr, newArr) {
-  const oldStr = JSON.stringify(oldArr);
-  const newStr = JSON.stringify(newArr);
+  const normalize = (arr) => arr.map(m => typeof m === 'string' ? m : `${m.id}:${m.variant ?? ''}`);
+  const oldStr = JSON.stringify(normalize(oldArr));
+  const newStr = JSON.stringify(normalize(newArr));
   if (oldStr === newStr) return '  (unchanged)';
   return `  - ${oldStr}\n  + ${newStr}`;
 }
@@ -558,9 +608,7 @@ function buildReport(results, configObj) {
   for (const r of results) {
     const role = r.role;
     const old = configObj.presets.opencode[role].model;
-    // Normalize both sides to prefixed IDs so unchanged models show
-    // unchanged (picked may be stripped while config stores prefixed).
-    const newModels = (r.picked ?? []).map((m) => `opencode/${stripModelPrefix(m)}`);
+    const newModels = r.pickedSerialized ?? [];
     const diff = formatDiff(old, newModels);
     const oldVariant = configObj.presets.opencode[role].variant;
     const newVariant = r.removeVariant ? undefined : r.variant;
@@ -570,6 +618,14 @@ function buildReport(results, configObj) {
     lines.push(`### ${role}`);
     lines.push(`model: ${diff}`);
     lines.push(`variant: ${vdiff}`);
+    // Show per-model variants
+    const perModelVariants = (r.picked ?? []).filter(p => typeof p === 'object' && p.variant);
+    if (perModelVariants.length) {
+      lines.push(`  per-model variants:`);
+      for (const m of perModelVariants) {
+        lines.push(`    - ${stripModelPrefix(m.id)}: ${m.variant}`);
+      }
+    }
     if (r.variantChanged) {
       lines.push(`  variant ${JSON.stringify(oldVariant)} → ${JSON.stringify(newVariant)}${r.variantForced ? ' (forced: previous variant unsupported by picked models)' : ''}`);
     }
@@ -666,7 +722,8 @@ Options:
   for (const role of ROLE_ORDER) {
     const roleCfg = rolesConfig.roles[role];
     const n = roleCfg.modelCount || 3;
-    const current = preset[role]?.model || [];
+    const currentRaw = preset[role]?.model || [];
+    const currentParsed = parseModelArray(currentRaw);
     const currentVariant = preset[role]?.variant;
 
     const scored = scoredByRole[role];
@@ -693,21 +750,47 @@ Options:
     }
 
     if (!picked) {
-      const currentStripped = current.map(stripModelPrefix);
+      const currentStripped = currentParsed.map(p => p.id);
       const missing = currentStripped.some((m, i) => m && !candidates.some(c => c.id === m));
       if (missing) forced = true;
       picked = pickTopN(candidates, scored, currentStripped, roleCfg.keepMargin || 0.15, n);
     }
 
-    // Resolve variant for the picked models.
+    // Build per-model variant assignments for picked models.
+    // Preserve variants for models that were already in the config (hysteresis).
+    // For new models, assign best variant from supported variants.
+    const pickedWithVariants = picked.map((modelId, idx) => {
+      const stripped = stripModelPrefix(modelId);
+      const currentMatch = currentParsed.find(p => p.id === stripped);
+      if (currentMatch?.variant) {
+        const supported = supportedVariants(candidatesById.get(stripped) ?? {});
+        if (supported.includes(currentMatch.variant)) {
+          return { id: modelId, variant: currentMatch.variant };
+        }
+      }
+      // New model or variant not supported: pick best for role
+      const supported = supportedVariants(candidatesById.get(stripped) ?? {});
+      const variant = pickBestVariant(supported, role);
+      return variant ? { id: modelId, variant } : modelId;
+    });
+
+    // For resolveVariant, we need the agent-level variant (for backward compat and empty-check logic)
+    // Use the first picked model's variant if all have same, else agent-level variant, else undefined
+    const firstVariant = pickedWithVariants[0] && typeof pickedWithVariants[0] === 'object' ? pickedWithVariants[0].variant : null;
+    const allSameVariant = pickedWithVariants.every(m => 
+      typeof m === 'object' && m.variant === firstVariant
+    );
+    const agentVariantForResolve = allSameVariant && firstVariant ? firstVariant : currentVariant;
+
+    // Resolve variant for the picked models (agent-level validation logic).
     const vr = resolveVariant({
       role,
-      currentVariant,
+      currentVariant: agentVariantForResolve,
       pickedIds: picked,
       candidatesById,
     });
 
-    // Track sharing
+    // Track sharing (use raw model IDs)
     for (const m of picked) {
       if (!modelToRoles.has(m)) modelToRoles.set(m, []);
       modelToRoles.get(m).push(role);
@@ -715,8 +798,11 @@ Options:
 
     results.push({
       role,
-      picked,
-      old: current,
+      picked: pickedWithVariants,
+      pickedSerialized: serializeModelArray(
+        pickedWithVariants.map(p => typeof p === 'string' ? { id: p, variant: null } : p)
+      ),
+      old: currentRaw,
       variant: vr.variant,
       removeVariant: vr.removeVariant === true,
       oldVariant: currentVariant,
@@ -733,10 +819,13 @@ Options:
   // Build new config (preserve everything else byte-for-byte)
   const newConfig = JSON.parse(configRaw); // preserves key order via parse/stringify
   for (const r of results) {
-    newConfig.presets.opencode[r.role].model = r.picked.map(m => `opencode/${stripModelPrefix(m)}`);
+    newConfig.presets.opencode[r.role].model = serializeModelArray(
+      r.picked.map(p => typeof p === 'string' ? { id: p, variant: null } : p)
+    );
     if (r.removeVariant) {
       delete newConfig.presets.opencode[r.role].variant;
     } else if (r.variantChanged && r.variant != null) {
+      // Keep agent-level variant as fallback for models without per-model variant
       newConfig.presets.opencode[r.role].variant = r.variant;
     }
   }
@@ -782,6 +871,9 @@ export {
   formatDiff,
   formatVariantDiff,
   buildReport,
+  parseModelArray,
+  serializeModelArray,
+  pickBestVariant,
   ROLE_VARIANT_PRIORITY,
   VARIANT_NEAREST,
   DEFAULT_REASONING_VARIANTS,
