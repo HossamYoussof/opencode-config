@@ -9,7 +9,7 @@ set -euo pipefail
 # to the global config directory for the current OS.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILES=("opencode.json" "oh-my-opencode-slim.json")
+CONFIG_FILES=("opencode.json" "oh-my-opencode-slim.json" "opencode-mem.jsonc")
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

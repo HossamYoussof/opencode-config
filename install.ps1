@@ -38,7 +38,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = $PSScriptRoot
-$ConfigFiles = @("opencode.json", "oh-my-opencode-slim.json")
+$ConfigFiles = @("opencode.json", "oh-my-opencode-slim.json", "opencode-mem.jsonc")
 
 # Tracks whether THIS run persisted any MCP secret to User env.
 # Set to $true only inside Save-McpSecretToUserEnv when a new/changed

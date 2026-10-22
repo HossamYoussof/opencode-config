@@ -22,6 +22,10 @@ import {
   resolveVariant,
   formatVariantDiff,
   buildReport,
+  pickMemModel,
+  pickBestVariant,
+  parseModelArray,
+  serializeModelArray,
 } from './refresh-opencode-models.mjs';
 
 function runScript(args, env = {}) {
@@ -530,5 +534,112 @@ describe('variant support', () => {
     assert.ok(report.includes('Variants'));
     assert.ok(report.includes('low'));
     assert.ok(report.includes('offline'));
+  });
+});
+
+describe('opencode-mem integration', () => {
+  const candidates = [
+    { id: 'opencode/nemotron-3-ultra-free', limit: { context: 1000000, output: 128000 } },
+    { id: 'opencode/flint-40b-free', limit: { context: 262144, output: 65536 } },
+    { id: 'opencode/beam-free', limit: { context: 1048576, output: 131072 } },
+    { id: 'opencode/minimax-m3.1-flash-free', limit: { context: 1000000, output: 512000 } },
+  ];
+
+  test('pickMemModel prefers orchestrator primary', () => {
+    const orchestratorResult = { picked: ['opencode/nemotron-3-ultra-free'] };
+    const m = pickMemModel(candidates, orchestratorResult);
+    assert.equal(m, 'opencode/nemotron-3-ultra-free');
+  });
+
+  test('pickMemModel handles object form with variant', () => {
+    const orchestratorResult = { picked: [{ id: 'opencode/beam-free', variant: 'high' }] };
+    const m = pickMemModel(candidates, orchestratorResult);
+    assert.equal(m, 'opencode/beam-free');
+  });
+
+  test('pickMemModel falls back to flint-40b-free when orchestrator not in candidates', () => {
+    const orchestratorResult = { picked: ['opencode/unknown-model'] };
+    const m = pickMemModel(candidates, orchestratorResult);
+    assert.equal(m, 'opencode/flint-40b-free');
+  });
+
+  test('pickMemModel falls back to first candidate when no flint', () => {
+    const noFlint = candidates.filter(c => c.id !== 'opencode/flint-40b-free');
+    const orchestratorResult = { picked: ['opencode/unknown-model'] };
+    const m = pickMemModel(noFlint, orchestratorResult);
+    assert.equal(m, noFlint[0].id);
+  });
+
+  test('pickMemModel handles empty orchestrator result', () => {
+    const m = pickMemModel(candidates, null);
+    assert.equal(m, 'opencode/flint-40b-free');
+    const m2 = pickMemModel(candidates, { picked: [] });
+    assert.equal(m2, 'opencode/flint-40b-free');
+  });
+
+  test('buildReport includes OpenCode Memory Plugin section when memModelId provided', () => {
+    const report = buildReport(
+      [{
+        role: 'fixer',
+        picked: ['opencode/a'],
+        variant: 'high',
+        removeVariant: false,
+        variantChanged: false,
+        variantForced: false,
+        variantWarning: null,
+        sharesWith: [],
+        forced: false,
+        pinned: false,
+        allCandidates: [{ id: 'a', limit: { context: 1000, output: 500 }, attachment: false, reasoning: true, reasoning_options: { type: 'effort', values: ['high'] }, release_date: '2026-01-01' }],
+      }],
+      { presets: { opencode: { fixer: { model: ['opencode/a'], variant: 'high' } } } },
+      'opencode/nemotron-3-ultra-free'
+    );
+    assert.ok(report.includes('## OpenCode Memory Plugin'));
+    assert.ok(report.includes('opencodeModel: opencode/nemotron-3-ultra-free'));
+  });
+
+  test('buildReport omits OpenCode Memory Plugin section when memModelId not provided', () => {
+    const report = buildReport(
+      [{
+        role: 'fixer',
+        picked: ['opencode/a'],
+        variant: 'high',
+        removeVariant: false,
+        variantChanged: false,
+        variantForced: false,
+        variantWarning: null,
+        sharesWith: [],
+        forced: false,
+        pinned: false,
+        allCandidates: [{ id: 'a', limit: { context: 1000, output: 500 }, attachment: false, reasoning: true, reasoning_options: { type: 'effort', values: ['high'] }, release_date: '2026-01-01' }],
+      }],
+      { presets: { opencode: { fixer: { model: ['opencode/a'], variant: 'high' } } } }
+    );
+    assert.ok(!report.includes('## OpenCode Memory Plugin'));
+  });
+
+  test('parseModelArray and serializeModelArray round-trip', () => {
+    const input = ['opencode/a', { id: 'opencode/b', variant: 'high' }, 'c'];
+    const parsed = parseModelArray(input);
+    assert.deepEqual(parsed, [
+      { id: 'a', variant: null },
+      { id: 'b', variant: 'high' },
+      { id: 'c', variant: null },
+    ]);
+    const serialized = serializeModelArray(parsed);
+    assert.deepEqual(serialized, ['opencode/a', { id: 'opencode/b', variant: 'high' }, 'opencode/c']);
+  });
+
+  test('pickBestVariant selects from supported for role', () => {
+    // Fixer prefers high -> max -> xhigh -> medium -> low
+    const supported = ['low', 'medium', 'high'];
+    assert.equal(pickBestVariant(supported, 'fixer'), 'high');
+    // Librarian prefers low -> medium -> high
+    assert.equal(pickBestVariant(supported, 'librarian'), 'low');
+    // Unknown role uses default
+    assert.equal(pickBestVariant(supported, 'unknown'), 'medium');
+    // Empty returns null (no hit)
+    assert.equal(pickBestVariant([], 'fixer'), null);
   });
 });
