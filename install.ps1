@@ -38,7 +38,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = $PSScriptRoot
-$ConfigFiles = @("opencode.json", "oh-my-opencode-slim.json", "opencode-mem.jsonc")
+$ConfigFiles = @("opencode.json", "oh-my-opencode-slim.json")
 
 # Tracks whether THIS run persisted any MCP secret to User env.
 # Set to $true only inside Save-McpSecretToUserEnv when a new/changed
@@ -506,138 +506,6 @@ function Get-CustomizedOpencodeJson {
     }
 }
 
-# Prompt for optional auto-capture config and stage a customized opencode-mem.jsonc.
-function Get-CustomizedOpencodeMemJson {
-    param(
-        [string]$SrcPath,
-        [switch]$NonInteractive
-    )
-
-    if (-not (Test-Path -Path $SrcPath)) { return $SrcPath }
-
-    $staging = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath ("opencode-mem.staged." + $PID + ".jsonc")
-    $keepStaging = $false
-    try {
-        Copy-Item -Path $SrcPath -Destination $staging -Force
-
-        try {
-            $json = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        } catch {
-            Write-Warn "Could not parse opencode-mem.jsonc; deploying it unmodified."
-            return $SrcPath
-        }
-
-        if ($NonInteractive) {
-            Write-Info "Skipping opencode-mem auto-capture prompt (non-interactive)."
-            return $SrcPath
-        }
-
-        Write-Host ""
-        Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-        Write-Host "  OpenCode Memory Plugin (opencode-mem) - Auto-Capture Setup" -ForegroundColor Cyan
-        Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Warn "IMPORTANT: Auto-capture does NOT work with free opencode/* models."
-        Write-Warn "         You need a provider with an API key (Groq, OpenAI, Anthropic, etc.)"
-        Write-Warn "         or a local Ollama instance."
-        Write-Host ""
-
-        $enable = Read-Host "Enable auto-capture for memory plugin? [y/N]"
-        if ($enable -notmatch '^[yY]$') {
-            Write-Info "Auto-capture disabled (default). You can enable it later by editing the config."
-            return $SrcPath
-        }
-
-        Write-Host ""
-        Write-Host "Available providers:"
-        Write-Host "  1) Groq (free tier, fast)           - openai-chat  - llama-3.3-70b-versatile - https://api.groq.com/openai/v1"
-        Write-Host "  2) OpenAI                           - openai-chat  - gpt-4o-mini              - https://api.openai.com/v1"
-        Write-Host "  3) Anthropic                        - anthropic    - claude-3-5-haiku-20241022 - https://api.anthropic.com/v1"
-        Write-Host "  4) Ollama (local)                   - openai-chat  - llama3.1                 - http://localhost:11434/v1"
-        Write-Host "  5) Custom"
-        Write-Host ""
-
-        $choice = Read-Host "Select provider [1-5]"
-        switch ($choice) {
-            1 { $provider = "openai-chat"; $model = "llama-3.3-70b-versatile"; $url = "https://api.groq.com/openai/v1" }
-            2 { $provider = "openai-chat"; $model = "gpt-4o-mini"; $url = "https://api.openai.com/v1" }
-            3 { $provider = "anthropic"; $model = "claude-3-5-haiku-20241022"; $url = "https://api.anthropic.com/v1" }
-            4 { $provider = "openai-chat"; $model = "llama3.1"; $url = "http://localhost:11434/v1" }
-            5 {
-                $provider = Read-Host "Provider type (openai-chat/anthropic/openai-responses/minimax/orcarouter/atlas-cloud)"
-                $model = Read-Host "Model name"
-                $url = Read-Host "API URL"
-            }
-            default { $provider = ""; $model = ""; $url = "" }
-        }
-
-        if (-not [string]::IsNullOrWhiteSpace($provider) -and -not [string]::IsNullOrWhiteSpace($model) -and -not [string]::IsNullOrWhiteSpace($url)) {
-            $key = Read-Host "API Key (will be saved to User environment as env var)" -AsSecureString
-            if ($null -ne $key) {
-                $plainKey = Convert-SecureStringToPlainText -Secure $key
-                if (-not [string]::IsNullOrWhiteSpace($plainKey)) {
-                    $keyName = "OPENCODE_MEM_API_KEY"
-                    [Environment]::SetEnvironmentVariable($keyName, $plainKey, 'User')
-                    Set-Item -Path ("Env:" + $keyName) -Value $plainKey
-                    Write-Ok "Saved $keyName to User environment."
-
-                    if (Get-Command python3 -ErrorAction SilentlyContinue) {
-                        $env:MEM_PROVIDER = $provider
-                        $env:MEM_MODEL = $model
-                        $env:MEM_URL = $url
-                        $env:MEM_KEY = $keyName
-                        python3 - $staging @"
-import json
-import os
-import sys
-
-path = sys.argv[1]
-provider = os.environ.get("MEM_PROVIDER", "")
-model = os.environ.get("MEM_MODEL", "")
-url = os.environ.get("MEM_URL", "")
-key_env = os.environ.get("MEM_KEY", "")
-
-with open(path) as f:
-    data = json.load(f)
-
-data["autoCaptureEnabled"] = True
-data["memoryProvider"] = provider
-data["memoryModel"] = model
-data["memoryApiUrl"] = url
-data["memoryApiKey"] = f"env://{key_env}"
-
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-"@
-                        Write-Ok "Configured auto-capture with ${provider}/${model}"
-                    } else {
-                        Write-Warn "python3 not found — auto-capture config not applied (manual edit needed)."
-                    }
-                } else {
-                    Write-Warn "No API key provided — auto-capture not configured."
-                }
-                $plainKey = ""
-            } else {
-                Write-Warn "No API key provided — auto-capture not configured."
-            }
-        } else {
-            Write-Warn "Incomplete provider config — auto-capture not configured."
-        }
-
-        $json | ConvertTo-Json -Depth 10 | Set-Content -Path $staging -Encoding UTF8
-        Write-Ok "Staged customized opencode-mem.jsonc."
-        $keepStaging = $true
-        return $staging
-    } catch {
-        Write-Warn "Skipping opencode-mem customization; deploying as-is."
-        return $SrcPath
-    } finally {
-        if (-not $keepStaging -and $staging -and (Test-Path -Path $staging)) {
-            Remove-Item -Path $staging -ErrorAction SilentlyContinue
-        }
-    }
-}
 
 # Deploy config files
 function Deploy-Configs {
@@ -657,15 +525,11 @@ function Deploy-Configs {
 
     $opencodeSrc = Join-Path -Path $ScriptDir -ChildPath "opencode.json"
     $stagedOpencodeJson = Get-CustomizedOpencodeJson -SrcPath $opencodeSrc -GithubPatParam $GithubPat -JenkinsUrlParam $JenkinsUrl -JenkinsAuthParam $JenkinsAuth -NonInteractive:$NonInteractive
-    $opencodeMemSrc = Join-Path -Path $ScriptDir -ChildPath "opencode-mem.jsonc"
-    $stagedOpencodeMemJson = Get-CustomizedOpencodeMemJson -SrcPath $opencodeMemSrc -NonInteractive:$NonInteractive
 
     foreach ($file in $ConfigFiles) {
         $src = Join-Path -Path $ScriptDir -ChildPath $file
         if ($file -eq "opencode.json" -and $stagedOpencodeJson -and (Test-Path -Path $stagedOpencodeJson)) {
             $src = $stagedOpencodeJson
-        } elseif ($file -eq "opencode-mem.jsonc" -and $stagedOpencodeMemJson -and (Test-Path -Path $stagedOpencodeMemJson)) {
-            $src = $stagedOpencodeMemJson
         }
         $dst = Join-Path -Path $TargetDir -ChildPath $file
 
@@ -685,9 +549,6 @@ function Deploy-Configs {
 
     if ($stagedOpencodeJson -and ($stagedOpencodeJson -ne $opencodeSrc) -and (Test-Path -Path $stagedOpencodeJson)) {
         Remove-Item -Path $stagedOpencodeJson -ErrorAction SilentlyContinue
-    }
-    if ($stagedOpencodeMemJson -and ($stagedOpencodeMemJson -ne $opencodeMemSrc) -and (Test-Path -Path $stagedOpencodeMemJson)) {
-        Remove-Item -Path $stagedOpencodeMemJson -ErrorAction SilentlyContinue
     }
 
     Write-Warn "If the opencode background service is running, it still has the old environment."

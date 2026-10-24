@@ -37,7 +37,6 @@ const ROOT = resolve(__dirname, '..');
 
 const DEFAULT_CONFIG = 'oh-my-opencode-slim.json';
 const DEFAULT_ROLES = 'scripts/opencode-model-roles.json';
-const DEFAULT_MEM_CONFIG = 'opencode-mem.jsonc';
 
 const ROLE_ORDER = [
   'orchestrator',
@@ -597,7 +596,7 @@ function formatVariantDiff(oldV, newV) {
   return `  - variant: ${JSON.stringify(o)}\n  + variant: ${JSON.stringify(n)}`;
 }
 
-function buildReport(results, configObj, memModelId) {
+function buildReport(results, configObj) {
   const lines = [];
   lines.push('# Opencode Model Refresh Report');
   lines.push('');
@@ -657,38 +656,10 @@ function buildReport(results, configObj, memModelId) {
     lines.push(`| ${m.id} | ${m.limit.context.toLocaleString()} | ${m.limit.output.toLocaleString()} | ${m.attachment ? '✅' : '❌'} | ${m.reasoning ? '✅' : '❌'} | ${vs.length ? vs.join(', ') : '—'} | ${m.release_date || 'unknown'} |`);
   }
   lines.push('');
-  if (memModelId) {
-    lines.push('## OpenCode Memory Plugin');
-    lines.push('');
-    lines.push(`opencodeModel: ${memModelId}`);
-    lines.push('');
-  }
-
   lines.push('> Note: variant validity is checked offline against models.dev static');
   lines.push('> `reasoning` + `reasoning_options` metadata (no live `opencode run`');
   lines.push('> calls), so CI stays deterministic and credential-free.');
   return lines.join('\n');
-}
-
-/**
- * Pick best model for opencode-mem (fast, reliable free model).
- * Prefers orchestrator's primary model, fallback to flint-40b-free or first available.
- * @param {Array} candidates - Filtered candidate models
- * @param {Object|null} orchestratorResult - Orchestrator role result with picked models
- * @returns {string} Model ID with opencode/ prefix
- */
-function pickMemModel(candidates, orchestratorResult) {
-  const orchestratorPrimary = orchestratorResult?.picked?.[0];
-  if (orchestratorPrimary) {
-    const primaryId = typeof orchestratorPrimary === 'string' ? orchestratorPrimary : orchestratorPrimary.id;
-    const stripped = stripModelPrefix(primaryId);
-    const model = candidates.find(c => stripModelPrefix(c.id) === stripped);
-    if (model) return model.id;
-  }
-  // Fallback: prefer flint-40b-free or first available
-  const flint = candidates.find(c => stripModelPrefix(c.id) === 'flint-40b-free');
-  if (flint) return flint.id;
-  return candidates[0]?.id;
 }
 
 async function main() {
@@ -845,34 +816,6 @@ Options:
     });
   }
 
-  const orchestratorResult = results.find(r => r.role === 'orchestrator');
-  const memModelId = pickMemModel(candidates, orchestratorResult);
-
-  // Load and update opencode-mem.jsonc
-  const memConfigPath = resolve(ROOT, DEFAULT_MEM_CONFIG);
-  let memConfigChanged = false;
-  let newMemRaw = '';
-  if (existsSync(memConfigPath)) {
-    const memRaw = readFileSync(memConfigPath, 'utf8');
-    // Strip JSONC comments (// and /* */) before parsing
-    const stripped = memRaw
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*$/gm, '');
-    let memConfig;
-    try { memConfig = JSON.parse(stripped); }
-    catch { memConfig = {}; }
-    if (memConfig.opencodeProvider === 'opencode' && memConfig.opencodeModel !== memModelId) {
-      memConfig.opencodeModel = memModelId;
-      // Preserve original formatting by doing a targeted replace - only the actual config line (not comments)
-      // Match lines where first non-whitespace is " (not // or /*)
-      newMemRaw = memRaw.replace(
-        /^(\s*)(?!\/\/|\/\*)"opencodeModel"\s*:\s*"[^"]*"/m,
-        `$1"opencodeModel": "${memModelId}"`
-      );
-      memConfigChanged = newMemRaw !== memRaw;
-    }
-  }
-
   // Build new config (preserve everything else byte-for-byte)
   const newConfig = JSON.parse(configRaw); // preserves key order via parse/stringify
   for (const r of results) {
@@ -888,10 +831,10 @@ Options:
   }
 
   const newRaw = JSON.stringify(newConfig, null, 2); // NO trailing newline
-  const changed = newRaw !== configRaw || memConfigChanged;
+  const changed = newRaw !== configRaw;
 
   // Report
-  const report = buildReport(results, config, memModelId);
+  const report = buildReport(results, config);
   if (opts.report) {
     writeFileSync(resolve(ROOT, opts.report), report);
     log(`Report written to ${opts.report}`);
@@ -904,9 +847,6 @@ Options:
   }
 
   if (opts.dryRun) {
-    if (memConfigChanged) {
-      log(`Would update ${DEFAULT_MEM_CONFIG} (opencodeModel: ${memModelId})`);
-    }
     log(changed ? 'DRY RUN — changes would be made' : 'DRY RUN — no changes needed');
     process.exit(changed ? 1 : 0);
   }
@@ -918,14 +858,6 @@ Options:
     log('No changes — config already optimal');
   }
 
-  if (memConfigChanged) {
-    if (!opts.dryRun && !opts.check) {
-      writeFileSync(memConfigPath, newMemRaw);
-      log(`Updated ${memConfigPath} (opencodeModel: ${memModelId})`);
-    } else {
-      log(`Would update ${memConfigPath} (opencodeModel: ${memModelId})`);
-    }
-  }
 }
 
 export {
@@ -943,7 +875,6 @@ export {
   parseModelArray,
   serializeModelArray,
   pickBestVariant,
-  pickMemModel,
   ROLE_VARIANT_PRIORITY,
   VARIANT_NEAREST,
   DEFAULT_REASONING_VARIANTS,

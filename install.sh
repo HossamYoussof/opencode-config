@@ -9,7 +9,7 @@ set -euo pipefail
 # to the global config directory for the current OS.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILES=("opencode.json" "oh-my-opencode-slim.json" "opencode-mem.jsonc")
+CONFIG_FILES=("opencode.json" "oh-my-opencode-slim.json")
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -750,112 +750,6 @@ PYEOF
   fi
 }
 
-customize_opencode_mem_json() {
-  local src_file="$1"
-  local staging_file="$2"
-
-  cp "$src_file" "$staging_file"
-
-  # Skip if --skip-mcp (reuse flag for all optional config)
-  if [[ "$SKIP_MCP" -eq 1 ]]; then
-    info "Skipping opencode-mem customization (--skip-mcp)."
-    return 0
-  elif [[ "$NON_INTERACTIVE" -eq 1 ]]; then
-    info "Non-interactive mode: using opencode-mem values from environment (if set)."
-  elif [[ ! -t 0 ]]; then
-    info "No interactive input available — using opencode-mem values from environment (if set)."
-  else
-    echo ""
-    printf "${CYAN}═══════════════════════════════════════════════════════════════${NC}\n"
-    printf "${CYAN}  OpenCode Memory Plugin (opencode-mem) - Auto-Capture Setup${NC}\n"
-    printf "${CYAN}═══════════════════════════════════════════════════════════════${NC}\n"
-    echo ""
-    warn "IMPORTANT: Auto-capture does NOT work with free opencode/* models."
-    warn "         You need a provider with an API key (Groq, OpenAI, Anthropic, etc.)"
-    warn "         or a local Ollama instance."
-    echo ""
-    read -r -p "Enable auto-capture for memory plugin? [y/N] " _enable || true
-    if [[ "${_enable:-}" =~ ^[yY]$ ]]; then
-      local _provider="" _model="" _url="" _key=""
-      
-      echo ""
-      echo "Available providers:"
-      echo "  1) Groq (free tier, fast)           - openai-chat  - llama-3.3-70b-versatile - https://api.groq.com/openai/v1"
-      echo "  2) OpenAI                           - openai-chat  - gpt-4o-mini              - https://api.openai.com/v1"
-      echo "  3) Anthropic                        - anthropic    - claude-3-5-haiku-20241022 - https://api.anthropic.com/v1"
-      echo "  4) Ollama (local)                   - openai-chat  - llama3.1                 - http://localhost:11434/v1"
-      echo "  5) Custom"
-      echo ""
-      read -r -p "Select provider [1-5]: " _choice || true
-      
-      case "${_choice:-}" in
-        1) _provider="openai-chat"; _model="llama-3.3-70b-versatile"; _url="https://api.groq.com/openai/v1" ;;
-        2) _provider="openai-chat"; _model="gpt-4o-mini"; _url="https://api.openai.com/v1" ;;
-        3) _provider="anthropic"; _model="claude-3-5-haiku-20241022"; _url="https://api.anthropic.com/v1" ;;
-        4) _provider="openai-chat"; _model="llama3.1"; _url="http://localhost:11434/v1" ;;
-        5)
-          read -r -p "Provider type (openai-chat/anthropic/openai-responses/minimax/orcarouter/atlas-cloud): " _provider || true
-          read -r -p "Model name: " _model || true
-          read -r -p "API URL: " _url || true
-          ;;
-        *) _provider=""; _model=""; _url="" ;;
-      esac
-      
-      if [[ -n "$_provider" && -n "$_model" && -n "$_url" ]]; then
-        read -r -s -p "API Key (will be saved to shell rc as env var): " _key || true
-        printf '\n'
-        if [[ -n "$_key" ]]; then
-          # Save API key to shell rc
-          local _key_name="OPENCODE_MEM_API_KEY"
-          export "${_key_name}=${_key}"
-          if persist_secret_to_rc "${_key_name}" "${_key}"; then
-            ok "Saved ${_key_name} to shell rc."
-          fi
-          
-          # Update the staging JSON with python
-          if command -v python3 &>/dev/null; then
-            MEM_PROVIDER="${_provider}" MEM_MODEL="${_model}" MEM_URL="${_url}" MEM_KEY="${_key_name}" \
-              python3 - "$staging_file" <<'PYEOF'
-import json
-import os
-import sys
-
-path = sys.argv[1]
-provider = os.environ.get("MEM_PROVIDER", "")
-model = os.environ.get("MEM_MODEL", "")
-url = os.environ.get("MEM_URL", "")
-key_env = os.environ.get("MEM_KEY", "")
-
-with open(path) as f:
-    data = json.load(f)
-
-# Enable auto-capture and configure
-data["autoCaptureEnabled"] = True
-data["memoryProvider"] = provider
-data["memoryModel"] = model
-data["memoryApiUrl"] = url
-data["memoryApiKey"] = f"env://{key_env}"
-
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-PYEOF
-            ok "Configured auto-capture with ${_provider}/${_model}"
-          else
-            warn "python3 not found — auto-capture config not applied (manual edit needed)."
-          fi
-        else
-          warn "No API key provided — auto-capture not configured."
-        fi
-      else
-        warn "Incomplete provider config — auto-capture not configured."
-      fi
-    else
-      info "Auto-capture disabled (default). You can enable it later by editing ~/.config/opencode/opencode-mem.jsonc"
-    fi
-    unset _enable _choice _provider _model _url _key _key_name
-  fi
-}
 
 deploy_configs() {
   local target_dir="$1"
@@ -887,18 +781,10 @@ deploy_configs() {
     if [[ "$file" == "opencode.json" ]]; then
       customize_opencode_json "$src" "$staging"
       effective_src="$staging"
-    elif [[ "$file" == "opencode-mem.jsonc" ]]; then
-      local mem_staging
-      mem_staging="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/opencode-mem-staging-$$.jsonc")"
-      customize_opencode_mem_json "$src" "$mem_staging"
-      effective_src="$mem_staging"
     fi
 
     cp "$effective_src" "$dst"
     ok "Deployed ${file} → ${dst}"
-    if [[ "$file" == "opencode-mem.jsonc" && -n "${mem_staging:-}" ]]; then
-      rm -f "$mem_staging"
-    fi
   done
 
   rm -f "$staging"

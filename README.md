@@ -8,7 +8,6 @@ Personal [OpenCode](https://opencode.ai) configuration with MCP servers, agent p
 |------|---------|
 | `opencode.json` | Main V2 config — mcp.servers, plugins (no agents block, no lsp) |
 | `oh-my-opencode-slim.json` | Agent model presets (opencode, openai, poe, opencode-go) |
-| `opencode-mem.jsonc` | Persistent memory plugin config (auto-synced with orchestrator model) |
 | `install.sh` | Installer for macOS / Linux / Windows (WSL/Git Bash) |
 | `install.ps1` | Installer for native Windows (PowerShell) |
 | `scripts/refresh-opencode-models.mjs` | Fetches latest free models from models.dev, updates presets + memory plugin |
@@ -106,11 +105,11 @@ Copy the config files directly:
 ```bash
 # macOS / Linux
 mkdir -p ~/.config/opencode
-cp opencode.json oh-my-opencode-slim.json opencode-mem.jsonc ~/.config/opencode/
+cp opencode.json oh-my-opencode-slim.json ~/.config/opencode/
 
 # Windows (PowerShell)
 New-Item -ItemType Directory -Force -Path "$env:APPDATA\opencode"
-Copy-Item opencode.json, oh-my-opencode-slim.json, opencode-mem.jsonc "$env:APPDATA\opencode\"
+Copy-Item opencode.json, oh-my-opencode-slim.json "$env:APPDATA\opencode\"
 ```
 
 If you need the github/jenkins MCPs, export `GITHUB_PAT` / `JENKINS_BASIC_AUTH` in your shell env (the JSON already references them via `{env:...}`), update the Jenkins `url`, remove its `"disabled": true`, then run `opencode service restart && opencode mcp list`.
@@ -123,7 +122,7 @@ Keep your agent presets and memory plugin model up to date with the latest free 
 # Check what would change (dry run)
 node scripts/refresh-opencode-models.mjs --dry-run
 
-# Apply updates to both oh-my-opencode-slim.json and opencode-mem.jsonc
+# Apply updates to oh-my-opencode-slim.json
 node scripts/refresh-opencode-models.mjs
 
 # Deploy to ~/.config/opencode/
@@ -134,8 +133,6 @@ The script:
 - Fetches the latest free opencode models from models.dev
 - Scores and picks the best models for each agent role (orchestrator, oracle, librarian, explorer, designer, fixer, observer)
 - Validates each role's `variant` against the picked models' supported reasoning variants
-- Updates `opencode-mem.jsonc` → `opencodeModel` to match the orchestrator's primary model
-- Preserves JSONC comments in `opencode-mem.jsonc`
 - Runs in CI with `--check` (exits 1 if changes would be made)
 
 ## Customization
@@ -188,36 +185,39 @@ Edit `oh-my-opencode-slim.json` → change the `preset` field:
 
 Add an entry under `presets` in `oh-my-opencode-slim.json` following the existing structure (orchestrator, oracle, librarian, explorer, designer, fixer agent configs).
 
-### Persistent Memory (`opencode-mem.jsonc`)
+### Persistent Memory (manual config)
 
-The repo includes `opencode-mem.jsonc` for the [opencode-mem](https://www.npmjs.com/package/opencode-mem) plugin — persistent local memory using a vector database (Turso/libSQL) with ONNX embeddings.
+OpenCode memory is provided by the [opencode-mem](https://www.npmjs.com/package/opencode-mem) plugin — persistent local memory using a vector database (Turso/libSQL) with ONNX embeddings. This repo no longer ships an `opencode-mem.jsonc` config file, so you set it up manually:
 
-Key settings:
+1. Enable the plugin in `opencode.json` → `plugins` (add it if not present):
+   ```json
+   "plugins": ["@tarquinen/opencode-dcp@latest", "oh-my-opencode-slim@latest", "opencode-mem@latest"]
+   ```
+2. Create `~/.config/opencode/opencode-mem.jsonc` with your settings. Minimum example:
+   ```jsonc
+   {
+     // Storage location for vector database
+     "storagePath": "~/.opencode-mem/data",
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `opencodeProvider` | `"opencode"` | Provider for auto-capture (uses your OpenCode auth) |
-| `opencodeModel` | `"nemotron-3-ultra-free"` | Model for auto-capture (auto-synced with orchestrator) |
-| `autoCaptureEnabled` | `false` | Background memory extraction from conversations |
-| `storagePath` | `~/.opencode-mem/data` | Vector DB location |
-| `embeddingModel` | `Xenova/nomic-embed-text-v1` | Local ONNX embedding model |
-| `webServerEnabled` | `true` | Web UI at `http://localhost:4747` |
+     // OpenCode provider (recommended — uses your existing OpenCode auth)
+     "opencodeProvider": "opencode",
+     "opencodeModel": "inherit",
 
-**Auto-capture** is disabled by default (free `opencode/*` models can't be used from background processes). Enable it by setting `autoCaptureEnabled: true` and configuring a provider (Groq, Ollama, OpenAI, etc.) via `memoryProvider` / `memoryApiUrl` / `memoryApiKey`.
+     // Auto-capture is disabled by default.
+     "autoCaptureEnabled": false,
 
-Memory tool usage in OpenCode:
-```bash
-# Store a preference
-> Remember I prefer TypeScript with strict mode
+     // Enable web UI for managing memories (http://localhost:4747)
+     "webServerEnabled": true,
+     "webServerPort": 4747,
+     "webServerHost": "127.0.0.1"
+   }
+   ```
+3. Restart the service: `opencode service restart && opencode mcp list`, then open the Web UI at `http://localhost:4747`.
 
-# Search memories
-> What are my TypeScript preferences?
-
-# List all memories
-> memory list
-```
-
-Web UI: `http://localhost:4747` (when OpenCode is running)
+Auto-capture (optional):
+- Free `opencode/*` models can't be used from background processes, so auto-capture is disabled by default.
+- To enable it, set `autoCaptureEnabled: true` and configure a provider via `memoryProvider` / `memoryModel` / `memoryApiUrl` / `memoryApiKey` (OpenAI-compatible, Anthropic, MiniMax, OrcaRouter, Atlas Cloud, or Groq via `openai-chat`).
+- Store API keys as env vars (e.g. `env://GROQ_API_KEY`) rather than plaintext in the file.
 
 ## Requirements
 
