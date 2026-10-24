@@ -455,50 +455,147 @@ detect_install_method() {
   err "No supported install method found. Please install curl, npm, or Homebrew first."
 }
 
+# Compare two semantic versions (major.minor.patch).
+# Returns 0 if v1 < v2, 1 if v1 >= v2, 2 if either is invalid.
+version_lt() {
+  local v1="$1" v2="$2"
+  [[ "$v1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 2
+  [[ "$v2" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 2
+  local IFS=.
+  read -ra a1 <<< "$v1"
+  read -ra a2 <<< "$v2"
+  for i in 0 1 2; do
+    if (( a1[i] < a2[i] )); then return 0; fi
+    if (( a1[i] > a2[i] )); then return 1; fi
+  done
+  return 1
+}
+
+# Get the latest available version for the given install method.
+# Echoes the version string (e.g., "1.2.3") on success, empty on failure.
+get_latest_version() {
+  local method="$1"
+  case "$method" in
+    npm)
+      npm view @opencode/cli version 2>/dev/null
+      ;;
+    brew)
+      brew info --json=v2 anomalyco/tap/opencode-v2 2>/dev/null | \
+        python3 -c "import sys, json; data=json.load(sys.stdin); print(data['formulae'][0]['versions']['stable'])" 2>/dev/null
+      ;;
+    curl)
+      # Fetch latest version from official opencode API (same as official installer)
+      local api_response
+      api_response="$(curl -fsSL "https://opencode.ai/update/api/latest/cli/npm" 2>/dev/null)" || return 1
+      python3 -c "import sys, json; data=json.loads(sys.argv[1]); print(data['version'])" "$api_response" 2>/dev/null
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 install_opencode() {
   local method="$1"
 
+  local latest_version
+  latest_version="$(get_latest_version "$method")" || latest_version=""
+
+  local should_install=0
+
   if command -v opencode &>/dev/null; then
-    local current_version
-    current_version="$(opencode --version 2>/dev/null || echo "unknown")"
-    warn "opencode is already installed (version: ${current_version}). Skipping install."
+    local current_version_raw
+    current_version_raw="$(opencode --version 2>/dev/null || echo "unknown")"
+    # Strip "opencode v" prefix if present (e.g., "opencode v2.1.2" -> "2.1.2")
+    local current_version="${current_version_raw#opencode v}"
+    
+    if [[ -n "$latest_version" && "$current_version" != "unknown" ]]; then
+      local cmp
+      if version_lt "$current_version" "$latest_version"; then
+        cmp=0
+      else
+        cmp=$?
+      fi
+      if [[ $cmp -eq 0 ]]; then
+        info "Update available: ${current_version} → ${latest_version}"
+        if [[ "$NON_INTERACTIVE" -eq 1 || ! -t 0 ]]; then
+          info "Non-interactive mode: proceeding with update."
+          should_install=1
+        else
+          local answer=""
+          read -r -p "Update to ${latest_version}? [Y/n] " answer || true
+          case "${answer:-}" in
+            [nN]|[nN][oO])
+              info "Skipping update. Will deploy config files for current version."
+              should_install=0
+              ;;
+            *)
+              should_install=1
+              ;;
+          esac
+        fi
+      elif [[ $cmp -eq 1 ]]; then
+        ok "opencode is up to date (version: ${current_version})."
+        should_install=0
+      else
+        warn "Could not compare versions (current: ${current_version}, latest: ${latest_version})."
+        should_install=0
+      fi
+    else
+      warn "opencode is already installed (version: ${current_version})."
+      should_install=0
+    fi
+  else
+    info "opencode not found. Installing latest version (${latest_version:-unknown})..."
+    should_install=1
+  fi
+
+  if [[ $should_install -eq 1 ]]; then
+    info "Installing opencode via ${method}..."
+
+    case "$method" in
+      curl)
+        curl -fsSL https://opencode.ai/v2/install | bash
+        ;;
+      npm)
+        npm install -g @opencode/cli
+        ;;
+      brew)
+        brew upgrade anomalyco/tap/opencode-v2 2>/dev/null || brew install anomalyco/tap/opencode-v2
+        ;;
+    esac
+
     if [[ -d "$HOME/.opencode/bin" ]]; then
       ensure_on_path "$HOME/.opencode/bin"
     fi
-    return
-  fi
 
-  info "Installing opencode via ${method}..."
+    if command -v npm &>/dev/null; then
+      _npm_global_bin
+      if [[ -n "$_NPM_BIN_CACHE" && "$_NPM_BIN_CACHE" != "$HOME/.opencode/bin" && -d "$_NPM_BIN_CACHE" ]]; then
+        ensure_on_path "$_NPM_BIN_CACHE"
+      fi
+    fi
 
-  case "$method" in
-    curl)
-      curl -fsSL https://opencode.ai/v2/install | bash
-      ;;
-    npm)
-      npm install -g @opencode/cli
-      ;;
-    brew)
-      brew install anomalyco/tap/opencode-v2
-      ;;
-  esac
-
-  if [[ -d "$HOME/.opencode/bin" ]]; then
-    ensure_on_path "$HOME/.opencode/bin"
-  fi
-
-  if command -v npm &>/dev/null; then
-    _npm_global_bin
-    if [[ -n "$_NPM_BIN_CACHE" && "$_NPM_BIN_CACHE" != "$HOME/.opencode/bin" && -d "$_NPM_BIN_CACHE" ]]; then
-      ensure_on_path "$_NPM_BIN_CACHE"
+    if command -v opencode &>/dev/null; then
+      ok "opencode installed: $(opencode --version 2>/dev/null || echo 'installed')"
+    else
+      suggest_extra_path "$method"
+      err "opencode installation failed or is not on PATH. If your rc files were just updated, restart your terminal (or run 'source ~/.zshrc') and try again."
+    fi
+  else
+    # Not installing/updating, but still ensure PATH is set
+    if [[ -d "$HOME/.opencode/bin" ]]; then
+      ensure_on_path "$HOME/.opencode/bin"
+    fi
+    if command -v npm &>/dev/null; then
+      _npm_global_bin
+      if [[ -n "$_NPM_BIN_CACHE" && "$_NPM_BIN_CACHE" != "$HOME/.opencode/bin" && -d "$_NPM_BIN_CACHE" ]]; then
+        ensure_on_path "$_NPM_BIN_CACHE"
+      fi
     fi
   fi
 
-  if command -v opencode &>/dev/null; then
-    ok "opencode installed: $(opencode --version 2>/dev/null || echo 'installed')"
-  else
-    suggest_extra_path "$method"
-    err "opencode installation failed or is not on PATH. If your rc files were just updated, restart your terminal (or run 'source ~/.zshrc') and try again."
-  fi
+  return 0
 }
 
 customize_opencode_json() {

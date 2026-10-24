@@ -151,17 +151,73 @@ function Ensure-InstallLocationsOnPath {
     }
 }
 
+# Compare two semantic versions (major.minor.patch).
+# Returns -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2, or $null if invalid.
+function Compare-Version {
+    param([string]$v1, [string]$v2)
+
+    if ($v1 -notmatch '^\d+\.\d+\.\d+$') { return $null }
+    if ($v2 -notmatch '^\d+\.\d+\.\d+$') { return $null }
+
+    $a1 = $v1 -split '\.'
+    $a2 = $v2 -split '\.'
+
+    for ($i = 0; $i -lt 3; $i++) {
+        $n1 = [int]$a1[$i]
+        $n2 = [int]$a2[$i]
+        if ($n1 -lt $n2) { return -1 }
+        if ($n1 -gt $n2) { return 1 }
+    }
+    return 0
+}
+
+# Get the latest available version from npm.
+# Returns version string (e.g., "1.2.3") on success, empty string on failure.
+function Get-LatestNpmVersion {
+    try {
+        $version = npm view @opencode/cli version 2>$null
+        return $version.Trim()
+    } catch {
+        return ""
+    }
+}
+
 # Install opencode
 function Install-Opencode {
     param([string]$Method)
 
+    $latestVersion = Get-LatestNpmVersion
+
     if (Get-Command opencode -ErrorAction SilentlyContinue) {
-        $version = & opencode --version 2>$null
-        if (-not $version) { $version = "unknown" }
-        Write-Warn "opencode is already installed (version: $version). Skipping install."
-        Refresh-SessionPath
-        Ensure-InstallLocationsOnPath
-        return
+        $currentVersionRaw = & opencode --version 2>$null
+        if (-not $currentVersionRaw) { $currentVersionRaw = "unknown" }
+        # Strip "opencode v" prefix if present (e.g., "opencode v2.1.2" -> "2.1.2")
+        $currentVersion = $currentVersionRaw -replace '^opencode v', ''
+
+        if ($latestVersion -and $currentVersion -ne "unknown") {
+            $cmp = Compare-Version -v1 $currentVersion -v2 $latestVersion
+            if ($null -eq $cmp) {
+                Write-Warn "Could not compare versions (current: $currentVersion, latest: $latestVersion)."
+            } elseif ($cmp -lt 0) {
+                Write-Info "Update available: $currentVersion → $latestVersion"
+            } else {
+                Write-Ok "opencode is up to date (version: $currentVersion). Skipping install."
+                Refresh-SessionPath
+                Ensure-InstallLocationsOnPath
+                return
+            }
+        } else {
+            Write-Warn "opencode is already installed (version: $currentVersion). Skipping install."
+            Refresh-SessionPath
+            Ensure-InstallLocationsOnPath
+            return
+        }
+    } else {
+        if ($latestVersion) {
+            Write-Info "opencode not found. Installing latest version ($latestVersion)..."
+        } else {
+            Write-Info "opencode not found. Installing latest version..."
+        }
     }
 
     Write-Info "Installing opencode via ${Method}..."
