@@ -203,11 +203,11 @@
         "model": [
           "opencode/nemotron-3-ultra-free",
           {
-            "id": "opencode/minimax-m3.1-flash-free",
+            "id": "opencode/beam-free",
             "variant": "high"
           },
           {
-            "id": "opencode/beam-free",
+            "id": "opencode/nemotron-3.5-super-vl-free",
             "variant": "high"
           }
         ],
@@ -220,14 +220,14 @@
       "librarian": {
         "model": [
           {
-            "id": "opencode/minimax-m3.1-flash-free",
-            "variant": "low"
-          },
-          {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
           },
-          "opencode/mimo-v2.6-flash-free"
+          "opencode/mimo-v2.6-flash-free",
+          {
+            "id": "opencode/glm-5.3-flash-free",
+            "variant": "low"
+          }
         ],
         "skills": [],
         "mcps": [
@@ -242,14 +242,14 @@
       "explorer": {
         "model": [
           {
-            "id": "opencode/minimax-m3.1-flash-free",
-            "variant": "low"
-          },
-          {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
           },
-          "opencode/mimo-v2.6-flash-free"
+          "opencode/mimo-v2.6-flash-free",
+          {
+            "id": "opencode/glm-5.3-flash-free",
+            "variant": "low"
+          }
         ],
         "skills": [],
         "mcps": [],
@@ -260,14 +260,14 @@
       "designer": {
         "model": [
           {
-            "id": "opencode/minimax-m3.1-flash-free",
-            "variant": "medium"
-          },
-          {
             "id": "opencode/nemotron-3.5-super-vl-free",
             "variant": "medium"
           },
-          "opencode/mimo-v2.6-flash-free"
+          "opencode/mimo-v2.6-flash-free",
+          {
+            "id": "opencode/glm-5.3-flash-free",
+            "variant": "low"
+          }
         ],
         "skills": [
           "agent-browser"
@@ -279,15 +279,12 @@
       },
       "fixer": {
         "model": [
-          {
-            "id": "opencode/minimax-m3.1-flash-free",
-            "variant": "high"
-          },
           "opencode/nemotron-3-ultra-free",
           {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "high"
-          }
+          },
+          "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [],
         "mcps": [],
@@ -297,15 +294,12 @@
       },
       "observer": {
         "model": [
-          {
-            "id": "opencode/minimax-m3.1-flash-free",
-            "variant": "low"
-          },
           "opencode/nemotron-3.5-lightning-free",
           {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
-          }
+          },
+          "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [],
         "mcps": [],
