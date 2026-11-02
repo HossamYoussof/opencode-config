@@ -161,7 +161,6 @@
     "opencode": {
       "orchestrator": {
         "model": [
-          "opencode/nemotron-3-ultra-free",
           {
             "id": "opencode/beam-free",
             "variant": "high"
@@ -169,7 +168,8 @@
           {
             "id": "opencode/nemotron-3.5-super-vl-free",
             "variant": "high"
-          }
+          },
+          "opencode/big-pickle"
         ],
         "skills": [
           "*"
@@ -185,9 +185,12 @@
       "oracle": {
         "model": [
           "opencode/big-pickle",
-          "opencode/nemotron-3-ultra-free",
           {
             "id": "opencode/beam-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/nemotron-3.5-super-vl-free",
             "variant": "high"
           }
         ],
@@ -201,7 +204,6 @@
       },
       "council": {
         "model": [
-          "opencode/nemotron-3-ultra-free",
           {
             "id": "opencode/beam-free",
             "variant": "high"
@@ -209,7 +211,8 @@
           {
             "id": "opencode/nemotron-3.5-super-vl-free",
             "variant": "high"
-          }
+          },
+          "opencode/nemotron-3.5-lightning-free"
         ],
         "skills": [],
         "mcps": [],
@@ -279,12 +282,15 @@
       },
       "fixer": {
         "model": [
-          "opencode/nemotron-3-ultra-free",
           {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "high"
           },
-          "opencode/mimo-v2.6-flash-free"
+          "opencode/mimo-v2.6-flash-free",
+          {
+            "id": "opencode/beam-free",
+            "variant": "high"
+          }
         ],
         "skills": [],
         "mcps": [],
