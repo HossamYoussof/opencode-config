@@ -17,11 +17,11 @@
  * interpretation of "test all existed and available" in a CI context.
  *
  * Usage:
- *   node scripts/refresh-opencode-models.mjs [options]
+ *   node scripts/refresh-opencode/refresh-opencode-models.mjs [options]
  *
  * Options:
  *   --config <path>        Path to oh-my-opencode-slim.json (default: oh-my-opencode-slim.json)
- *   --roles <path>         Path to opencode-model-roles.json (default: scripts/opencode-model-roles.json)
+ *   --roles <path>         Path to opencode-model-roles.json (default: scripts/refresh-opencode/opencode-model-roles.json)
  *   --report <path>        Write markdown change report to this file
  *   --dry-run              Do not write config; print what would change (models AND variants)
  *   --check                Exit 1 if changes would be made (models OR variants), 0 if no changes (for CI)
@@ -33,10 +33,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..');
+const ROOT = resolve(__dirname, '..', '..');
 
 const DEFAULT_CONFIG = 'oh-my-opencode-slim.json';
-const DEFAULT_ROLES = 'scripts/opencode-model-roles.json';
+const DEFAULT_ROLES = 'scripts/refresh-opencode/opencode-model-roles.json';
 
 const ROLE_ORDER = [
   'orchestrator',
@@ -666,7 +666,7 @@ async function main() {
   const opts = parseArgs();
   if (opts.help) {
     console.log(`
-Usage: node scripts/refresh-opencode-models.mjs [options]
+Usage: node scripts/refresh-opencode/refresh-opencode-models.mjs [options]
 
 Picks top models per role AND validates each role's variant against the
 picked models' supported variants (from models.dev reasoning_options).

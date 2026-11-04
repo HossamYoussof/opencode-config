@@ -1,12 +1,14 @@
-name: Refresh Opencode Models
+name: Refresh Models
 
-# Re-picks the best-fit free `opencode` models for every agent role in the
-# `opencode` preset of oh-my-opencode-slim.json, then opens an auto-merged PR.
-# The model lineup rotates faster than a human can track, so this runs weekly.
+# Re-picks the best-fit free models for every agent role in both the
+# `opencode` and `nvidia` presets of oh-my-opencode-slim.json, then opens an
+# auto-merged PR. The model lineup rotates faster than a human can track, so
+# this runs weekly.
 #
-# The picker is fully deterministic — no API key, no LLM call. It scores every
-# free, non-deprecated model from https://models.dev/api.json against a
-# per-role weight profile in scripts/opencode-model-roles.json.
+# Both pickers are fully deterministic — no API key, no LLM call. The opencode
+# picker scores models from https://models.dev/api.json against a per-role
+# weight profile; the NVIDIA picker scores models from the NVIDIA NIM catalog
+# at https://integrate.api.nvidia.com/v1/models.
 
 on:
   schedule:
@@ -25,7 +27,7 @@ permissions:
   pull-requests: write # set auto-merge on the opened PR
 
 concurrency:
-  group: refresh-opencode-models
+  group: refresh-models
   cancel-in-progress: false
 
 jobs:
@@ -48,22 +50,51 @@ jobs:
           node-version: '24'
 
       - name: Test the picker
-        run: node --test scripts/refresh-opencode-models.test.mjs
+        run: node --test scripts/refresh-opencode/refresh-opencode-models.test.mjs
 
-      - name: Pick models and write the report
+      - name: Test the NVIDIA picker
+        run: node --test scripts/refresh-nvidia/refresh-nvidia-models.test.mjs
+
+      - name: Pick opencode models and write the report
         id: pick
         run: |
-          node scripts/refresh-opencode-models.mjs \
+          node scripts/refresh-opencode/refresh-opencode-models.mjs \
             --config oh-my-opencode-slim.json \
-            --roles scripts/opencode-model-roles.json \
+            --roles scripts/refresh-opencode/opencode-model-roles.json \
             --report pr-body.md
 
-      - name: Upload report
-        if: always() && hashFiles('pr-body.md') != ''
+      - name: Pick NVIDIA models and write the report
+        id: pick-nvidia
+        continue-on-error: true
+        run: |
+          node scripts/refresh-nvidia/refresh-nvidia-models.mjs \
+            --config oh-my-opencode-slim.json \
+            --roles scripts/refresh-nvidia/nvidia-model-roles.json \
+            --report nvidia-report.md
+        env:
+          # Required secret: NVIDIA_API_KEY (set in repo settings -> Secrets and variables -> Actions).
+          # Without it, the NVIDIA catalog fetch is unauthenticated and returns 401/403.
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
+      - name: Upload reports
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: model-picker-report
-          path: pr-body.md
+          name: model-picker-reports
+          path: |
+            pr-body.md
+            nvidia-report.md
+
+      - name: Combine reports for PR body
+        if: inputs.dry_run != true
+        run: |
+          {
+            cat pr-body.md
+            echo ''
+            echo '## NVIDIA Model Refresh'
+            echo ''
+            cat nvidia-report.md 2>/dev/null || echo '*NVIDIA report unavailable — NVIDIA picker skipped or failed*'
+          } > pr-body-combined.md
 
       - name: Open pull request
         id: cpr
@@ -75,7 +106,7 @@ jobs:
           branch: chore/refresh-opencode-models
           commit-message: 'chore(preset): refresh opencode model assignments'
           title: 'chore(preset): refresh opencode model assignments'
-          body-file: pr-body.md
+          body-path: pr-body-combined.md
           labels: automated
 
       - name: Enable auto-merge

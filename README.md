@@ -10,7 +10,8 @@ Personal [OpenCode](https://opencode.ai) configuration with MCP servers, agent p
 | `oh-my-opencode-slim.json` | Agent model presets (opencode, openai, poe, opencode-go) |
 | `install.sh` | Installer for macOS / Linux / Windows (WSL/Git Bash) |
 | `install.ps1` | Installer for native Windows (PowerShell) |
-| `scripts/refresh-opencode-models.mjs` | Fetches latest free models from models.dev, updates presets + memory plugin |
+| `scripts/refresh-opencode/refresh-opencode-models.mjs` | Fetches latest free models from models.dev, updates presets + memory plugin |
+| `scripts/refresh-nvidia/refresh-nvidia-models.mjs` | Fetches NVIDIA NIM models, tests them live, updates nvidia preset + memory plugin |
 
 `opencode.json` uses the native V2 shape: `mcp.servers` (not bare `mcp`), `disabled: true/false` (not `enabled`), and `plugins` (plural). There is no `agent`/`agents` block — explore/general agents run at defaults (enabled) — and no `lsp` key.
 
@@ -46,6 +47,7 @@ The default preset is **opencode** — all free models, no API keys required.
 | `openai` | `openai/gpt-5.6-terra` | `openai/gpt-5.6-sol` | OpenAI API users |
 | `poe` | `poe/anthropic/claude-opus-4.8` | `poe/anthropic/claude-opus-4.8` | Poe subscribers |
 | `opencode-go` | `opencode-go/minimax-m3` | `opencode-go/qwen3.7-max` | OpenCode Go users |
+| `nvidia` | `nvidia/nemotron-3.5-super-vl-120b-a12b` (+ Lightning, Nano Omni fallbacks) | `nvidia/nemotron-3.5-super-vl-120b-a12b` (+ Lightning fallbacks) | NVIDIA NIM API users — reasoning/VL capable |
 
 Switch presets by changing `"preset": "opencode"` in `oh-my-opencode-slim.json`.
 
@@ -120,10 +122,10 @@ Keep your agent presets and memory plugin model up to date with the latest free 
 
 ```bash
 # Check what would change (dry run)
-node scripts/refresh-opencode-models.mjs --dry-run
+node scripts/refresh-opencode/refresh-opencode-models.mjs --dry-run
 
 # Apply updates to oh-my-opencode-slim.json
-node scripts/refresh-opencode-models.mjs
+node scripts/refresh-opencode/refresh-opencode-models.mjs
 
 # Deploy to ~/.config/opencode/
 ./install.sh --skip-mcp
@@ -134,6 +136,31 @@ The script:
 - Scores and picks the best models for each agent role (orchestrator, oracle, librarian, explorer, designer, fixer, observer)
 - Validates each role's `variant` against the picked models' supported reasoning variants
 - Runs in CI with `--check` (exits 1 if changes would be made)
+
+## NVIDIA Model Refresh Script
+
+Keep your NVIDIA `nvidia` agent preset up to date with the latest NVIDIA NIM models:
+
+```bash
+# Check what would change (dry run)
+node scripts/refresh-nvidia/refresh-nvidia-models.mjs --dry-run
+
+# Apply updates to oh-my-opencode-slim.json
+NVIDIA_API_KEY="your-key" node scripts/refresh-nvidia/refresh-nvidia-models.mjs
+
+# Deploy to ~/.config/opencode/
+./install.sh --skip-mcp
+```
+
+The script:
+- Fetches available models from the NVIDIA NIM catalog (`https://integrate.api.nvidia.com/v1/models`)
+- Requires `NVIDIA_API_KEY` for catalog authentication
+- Filters to 8 known-working models with hardcoded metadata from prior live testing
+- Live-tests each candidate via a chat completion before selection (`--test-live`)
+- Picks top models per agent role (orchestrator, oracle, council, librarian, explorer, designer, fixer, observer)
+- Handles `nvidia/`, `poolside/`, and `meta/` org prefixes correctly
+- Runs in CI with `--check` (exits 1 if changes would be made)
+
 
 ## Customization
 

@@ -314,6 +314,136 @@
         "description": "Image analysis and vision tasks"
       }
     },
+    "nvidia": {
+      "orchestrator": {
+        "model": [
+          "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "thinking"
+          },
+          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+        ],
+        "variant": "thinking",
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ],
+        "displayName": "Orchestrator",
+        "color": "primary",
+        "description": "Primary delegation agent with full skill access — NVIDIA Nemotron 3.5 Super VL 120B reasoning"
+      },
+      "oracle": {
+        "model": [
+          "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "thinking"
+          },
+          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+        ],
+        "variant": "thinking",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": [],
+        "displayName": "Oracle",
+        "color": "accent",
+        "description": "Deep reasoning and architectural decisions — NVIDIA Nemotron 3.5 Super VL 120B"
+      },
+      "council": {
+        "model": [
+          "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "high"
+          },
+          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+        ],
+        "skills": [],
+        "mcps": [],
+        "displayName": "Council",
+        "color": "accent",
+        "description": "Multi-perspective deliberation — NVIDIA Nemotron 3.5 Super VL 120B"
+      },
+      "librarian": {
+        "model": [
+          "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "poolside/laguna-xs-2.1",
+          "meta/llama-guard-4-12b"
+        ],
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "websearch",
+          "context7",
+          "gh_grep"
+        ],
+        "displayName": "Librarian",
+        "color": "info",
+        "description": "Research and documentation lookup — NVIDIA Nemotron 3.5 Lightning (fastest)"
+      },
+      "explorer": {
+        "model": [
+          "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "poolside/laguna-xs-2.1",
+          "meta/llama-guard-4-12b"
+        ],
+        "skills": [],
+        "mcps": [],
+        "displayName": "Explorer",
+        "color": "success",
+        "description": "Codebase exploration and search — NVIDIA Nemotron 3.5 Lightning (fastest)"
+      },
+      "designer": {
+        "model": [
+          "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "medium"
+          },
+          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+        ],
+        "skills": [
+          "agent-browser"
+        ],
+        "mcps": [],
+        "displayName": "Designer",
+        "color": "warning",
+        "description": "UI/UX design and visual implementation — NVIDIA Nemotron 3.5 Super VL 120B (multimodal)"
+      },
+      "fixer": {
+        "model": [
+          "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "poolside/laguna-xs-2.1",
+          "meta/llama-guard-4-12b"
+        ],
+        "variant": "high",
+        "skills": [],
+        "mcps": [],
+        "displayName": "Fixer",
+        "color": "error",
+        "description": "Bug fixes and implementation tasks — NVIDIA Nemotron 3.5 Lightning (fastest)"
+      },
+      "observer": {
+        "model": [
+          "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "low"
+          },
+          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+        ],
+        "skills": [],
+        "mcps": [],
+        "displayName": "Observer",
+        "color": "secondary",
+        "description": "Image analysis and vision tasks — NVIDIA Nemotron 3.5 Super VL 120B (multimodal)"
+      }
+    },
     "poe": {
       "orchestrator": {
         "model": "poe/anthropic/claude-opus-4.8",
