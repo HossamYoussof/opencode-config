@@ -14,11 +14,11 @@
  * (NVIDIA shape), not `reasoning_options` (opencode shape).
  *
  * Usage:
- *   node scripts/refresh-nvidia-models.mjs [options]
+ *   node scripts/refresh-nvidia/refresh-nvidia-models.mjs [options]
  *
  * Options:
  *   --config <path>        Path to oh-my-opencode-slim.json (default: oh-my-opencode-slim.json)
- *   --roles <path>         Path to nvidia-model-roles.json (default: scripts/nvidia-model-roles.json)
+ *   --roles <path>         Path to nvidia-model-roles.json (default: scripts/refresh-nvidia/nvidia-model-roles.json)
  *   --report <path>        Write markdown change report to this file
  *   --dry-run              Do not write config; print what would change (models AND variants)
  *   --check                Exit 1 if changes would be made (models OR variants), 0 if no changes (for CI)
@@ -31,10 +31,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..');
+const ROOT = resolve(__dirname, '..', '..');
 
 const DEFAULT_CONFIG = 'oh-my-opencode-slim.json';
-const DEFAULT_ROLES = 'scripts/nvidia-model-roles.json';
+const DEFAULT_ROLES = 'scripts/refresh-nvidia/nvidia-model-roles.json';
 
 const NVIDIA_API_BASE = 'https://integrate.api.nvidia.com/v1';
 
@@ -534,7 +534,7 @@ async function main() {
   const opts = parseArgs();
   if (opts.help) {
     console.log(`
-Usage: node scripts/refresh-nvidia-models.mjs [options]
+Usage: node scripts/refresh-nvidia/refresh-nvidia-models.mjs [options]
 
 Picks top NVIDIA NIM models per role AND validates each role's variant against
 the picked models' supported variants (from NVIDIA catalog).

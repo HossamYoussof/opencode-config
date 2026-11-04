@@ -9,8 +9,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..');
-const SCRIPT = resolve(ROOT, 'scripts/refresh-opencode-models.mjs');
+const ROOT = resolve(__dirname, '..', '..');
+const SCRIPT = resolve(ROOT, 'scripts/refresh-opencode/refresh-opencode-models.mjs');
 const FIXTURES = resolve(ROOT, 'scripts/test-fixtures');
 
 import { spawn } from 'node:child_process';
@@ -80,7 +80,7 @@ describe('refresh-opencode-models.mjs', () => {
   test('fails when presets.opencode missing', async () => {
     const badConfig = resolve(FIXTURES, 'bad-config.json');
     writeFileSync(badConfig, JSON.stringify({ presets: {} }, null, 2));
-    const { code, stderr } = await runScript(['--config', badConfig, '--roles', 'scripts/opencode-model-roles.json', '--dry-run']);
+    const { code, stderr } = await runScript(['--config', badConfig, '--roles', 'scripts/refresh-opencode/opencode-model-roles.json', '--dry-run']);
     assert.equal(code, 2);
     assert.ok(stderr.includes('Missing presets.opencode'));
   });
@@ -91,7 +91,7 @@ describe('refresh-opencode-models.mjs', () => {
     writeFileSync(config, JSON.stringify(validConfig, null, 2));
 
     const badRoles = resolve(FIXTURES, 'bad-roles.json');
-    const validRoles = loadJson(resolve(ROOT, 'scripts/opencode-model-roles.json'));
+    const validRoles = loadJson(resolve(ROOT, 'scripts/refresh-opencode/opencode-model-roles.json'));
     validRoles.global = { ...validRoles.global, modelsDevUrl: 'http://127.0.0.1:1/invalid.json' };
     writeFileSync(badRoles, JSON.stringify(validRoles, null, 2));
 

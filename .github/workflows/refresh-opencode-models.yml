@@ -6,7 +6,7 @@ name: Refresh Opencode Models
 #
 # The picker is fully deterministic — no API key, no LLM call. It scores every
 # free, non-deprecated model from https://models.dev/api.json against a
-# per-role weight profile in scripts/opencode-model-roles.json.
+# per-role weight profile in scripts/refresh-opencode/opencode-model-roles.json.
 
 on:
   schedule:
@@ -48,14 +48,14 @@ jobs:
           node-version: '24'
 
       - name: Test the picker
-        run: node --test scripts/refresh-opencode-models.test.mjs
+        run: node --test scripts/refresh-opencode/refresh-opencode-models.test.mjs
 
       - name: Pick models and write the report
         id: pick
         run: |
-          node scripts/refresh-opencode-models.mjs \
+          node scripts/refresh-opencode/refresh-opencode-models.mjs \
             --config oh-my-opencode-slim.json \
-            --roles scripts/opencode-model-roles.json \
+            --roles scripts/refresh-opencode/opencode-model-roles.json \
             --report pr-body.md
 
       - name: Upload report

@@ -10,7 +10,7 @@ Personal [OpenCode](https://opencode.ai) configuration with MCP servers, agent p
 | `oh-my-opencode-slim.json` | Agent model presets (opencode, openai, poe, opencode-go) |
 | `install.sh` | Installer for macOS / Linux / Windows (WSL/Git Bash) |
 | `install.ps1` | Installer for native Windows (PowerShell) |
-| `scripts/refresh-opencode-models.mjs` | Fetches latest free models from models.dev, updates presets + memory plugin |
+| `scripts/refresh-opencode/refresh-opencode-models.mjs` | Fetches latest free models from models.dev, updates presets + memory plugin |
 
 `opencode.json` uses the native V2 shape: `mcp.servers` (not bare `mcp`), `disabled: true/false` (not `enabled`), and `plugins` (plural). There is no `agent`/`agents` block — explore/general agents run at defaults (enabled) — and no `lsp` key.
 
@@ -120,10 +120,10 @@ Keep your agent presets and memory plugin model up to date with the latest free 
 
 ```bash
 # Check what would change (dry run)
-node scripts/refresh-opencode-models.mjs --dry-run
+node scripts/refresh-opencode/refresh-opencode-models.mjs --dry-run
 
 # Apply updates to oh-my-opencode-slim.json
-node scripts/refresh-opencode-models.mjs
+node scripts/refresh-opencode/refresh-opencode-models.mjs
 
 # Deploy to ~/.config/opencode/
 ./install.sh --skip-mcp

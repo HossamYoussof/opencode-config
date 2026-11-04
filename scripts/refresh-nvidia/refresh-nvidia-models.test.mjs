@@ -10,8 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..');
-const SCRIPT = resolve(ROOT, 'scripts/refresh-nvidia-models.mjs');
+const ROOT = resolve(__dirname, '..', '..');
+const SCRIPT = resolve(ROOT, 'scripts/refresh-nvidia/refresh-nvidia-models.mjs');
 const FIXTURES = resolve(ROOT, 'scripts/test-fixtures');
 
 import {
@@ -84,7 +84,7 @@ describe('refresh-nvidia-models.mjs CLI', () => {
   test('fails when presets.nvidia missing', async () => {
     const badConfig = resolve(FIXTURES, 'bad-config.json');
     writeFileSync(badConfig, JSON.stringify({ presets: {} }, null, 2));
-    const { code, stderr } = await runScript(['--config', badConfig, '--roles', 'scripts/nvidia-model-roles.json', '--dry-run']);
+    const { code, stderr } = await runScript(['--config', badConfig, '--roles', 'scripts/refresh-nvidia/nvidia-model-roles.json', '--dry-run']);
     assert.equal(code, 2);
     assert.ok(stderr.includes('Missing presets.nvidia'));
   });
