@@ -50,7 +50,10 @@ jobs:
       - name: Test the picker
         run: node --test scripts/refresh-opencode/refresh-opencode-models.test.mjs
 
-      - name: Pick models and write the report
+      - name: Test the NVIDIA picker
+        run: node --test scripts/refresh-nvidia/refresh-nvidia-models.test.mjs
+
+      - name: Pick opencode models and write the report
         id: pick
         run: |
           node scripts/refresh-opencode/refresh-opencode-models.mjs \
@@ -58,12 +61,24 @@ jobs:
             --roles scripts/refresh-opencode/opencode-model-roles.json \
             --report pr-body.md
 
-      - name: Upload report
-        if: always() && hashFiles('pr-body.md') != ''
+      - name: Pick NVIDIA models and write the report
+        id: pick-nvidia
+        run: |
+          node scripts/refresh-nvidia/refresh-nvidia-models.mjs \
+            --config oh-my-opencode-slim.json \
+            --roles scripts/refresh-nvidia/nvidia-model-roles.json \
+            --report nvidia-report.md
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
+      - name: Upload reports
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: model-picker-report
-          path: pr-body.md
+          name: model-picker-reports
+          path: |
+            pr-body.md
+            nvidia-report.md
 
       - name: Open pull request
         id: cpr
