@@ -63,12 +63,15 @@ jobs:
 
       - name: Pick NVIDIA models and write the report
         id: pick-nvidia
+        continue-on-error: true
         run: |
           node scripts/refresh-nvidia/refresh-nvidia-models.mjs \
             --config oh-my-opencode-slim.json \
             --roles scripts/refresh-nvidia/nvidia-model-roles.json \
             --report nvidia-report.md
         env:
+          # Required secret: NVIDIA_API_KEY (set in repo settings -> Secrets and variables -> Actions).
+          # Without it, the NVIDIA catalog fetch is unauthenticated and returns 401/403.
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
       - name: Upload reports
@@ -80,6 +83,17 @@ jobs:
             pr-body.md
             nvidia-report.md
 
+      - name: Combine reports for PR body
+        if: inputs.dry_run != true
+        run: |
+          {
+            cat pr-body.md
+            echo ''
+            echo '## NVIDIA Model Refresh'
+            echo ''
+            cat nvidia-report.md 2>/dev/null || echo '*NVIDIA report unavailable — NVIDIA picker skipped or failed*'
+          } > pr-body-combined.md
+
       - name: Open pull request
         id: cpr
         if: inputs.dry_run != true
@@ -90,7 +104,7 @@ jobs:
           branch: chore/refresh-opencode-models
           commit-message: 'chore(preset): refresh opencode model assignments'
           title: 'chore(preset): refresh opencode model assignments'
-          body-file: pr-body.md
+          body-path: pr-body-combined.md
           labels: automated
 
       - name: Enable auto-merge
