@@ -1,12 +1,14 @@
-name: Refresh Opencode Models
+name: Refresh Models
 
-# Re-picks the best-fit free `opencode` models for every agent role in the
-# `opencode` preset of oh-my-opencode-slim.json, then opens an auto-merged PR.
-# The model lineup rotates faster than a human can track, so this runs weekly.
+# Re-picks the best-fit free models for every agent role in both the
+# `opencode` and `nvidia` presets of oh-my-opencode-slim.json, then opens an
+# auto-merged PR. The model lineup rotates faster than a human can track, so
+# this runs weekly.
 #
-# The picker is fully deterministic — no API key, no LLM call. It scores every
-# free, non-deprecated model from https://models.dev/api.json against a
-# per-role weight profile in scripts/refresh-opencode/opencode-model-roles.json.
+# Both pickers are fully deterministic — no API key, no LLM call. The opencode
+# picker scores models from https://models.dev/api.json against a per-role
+# weight profile; the NVIDIA picker scores models from the NVIDIA NIM catalog
+# at https://integrate.api.nvidia.com/v1/models.
 
 on:
   schedule:
@@ -25,7 +27,7 @@ permissions:
   pull-requests: write # set auto-merge on the opened PR
 
 concurrency:
-  group: refresh-opencode-models
+  group: refresh-models
   cancel-in-progress: false
 
 jobs:
