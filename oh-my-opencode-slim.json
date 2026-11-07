@@ -186,11 +186,11 @@
         "model": [
           "opencode/big-pickle",
           {
-            "id": "opencode/beam-free",
+            "id": "opencode/crouton-alpha-free",
             "variant": "high"
           },
           {
-            "id": "opencode/nemotron-3.5-super-vl-free",
+            "id": "opencode/beam-free",
             "variant": "high"
           }
         ],
@@ -209,10 +209,13 @@
             "variant": "high"
           },
           {
-            "id": "opencode/nemotron-3.5-super-vl-free",
+            "id": "opencode/crouton-alpha-free",
             "variant": "high"
           },
-          "opencode/nemotron-3.5-lightning-free"
+          {
+            "id": "opencode/inkling-2-small-free",
+            "variant": "high"
+          }
         ],
         "skills": [],
         "mcps": [],
@@ -223,14 +226,14 @@
       "librarian": {
         "model": [
           {
+            "id": "opencode/inkling-2-small-free",
+            "variant": "low"
+          },
+          {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
           },
-          "opencode/mimo-v2.6-flash-free",
-          {
-            "id": "opencode/glm-5.3-flash-free",
-            "variant": "low"
-          }
+          "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [],
         "mcps": [
@@ -245,14 +248,14 @@
       "explorer": {
         "model": [
           {
+            "id": "opencode/inkling-2-small-free",
+            "variant": "low"
+          },
+          {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
           },
-          "opencode/mimo-v2.6-flash-free",
-          {
-            "id": "opencode/glm-5.3-flash-free",
-            "variant": "low"
-          }
+          "opencode/mimo-v2.6-flash-free"
         ],
         "skills": [],
         "mcps": [],
@@ -266,10 +269,13 @@
             "id": "opencode/nemotron-3.5-super-vl-free",
             "variant": "medium"
           },
-          "opencode/mimo-v2.6-flash-free",
           {
-            "id": "opencode/glm-5.3-flash-free",
-            "variant": "low"
+            "id": "opencode/inkling-2-small-free",
+            "variant": "medium"
+          },
+          {
+            "id": "opencode/crouton-alpha-free",
+            "variant": "medium"
           }
         ],
         "skills": [
@@ -283,12 +289,15 @@
       "fixer": {
         "model": [
           {
-            "id": "opencode/deepseek-v4.1-flash-free",
+            "id": "opencode/inkling-2-small-free",
             "variant": "high"
           },
-          "opencode/mimo-v2.6-flash-free",
           {
-            "id": "opencode/beam-free",
+            "id": "opencode/crouton-alpha-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "high"
           }
         ],
@@ -300,12 +309,15 @@
       },
       "observer": {
         "model": [
+          {
+            "id": "opencode/inkling-2-small-free",
+            "variant": "low"
+          },
           "opencode/nemotron-3.5-lightning-free",
           {
             "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
-          },
-          "opencode/mimo-v2.6-flash-free"
+          }
         ],
         "skills": [],
         "mcps": [],
@@ -317,12 +329,18 @@
     "nvidia": {
       "orchestrator": {
         "model": [
-          "nvidia/nemotron-3.5-super-vl-120b-a12b",
           {
-            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "id": "nvidia/nemotron-3-ultra-550b-a55b",
             "variant": "thinking"
           },
-          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          {
+            "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          }
         ],
         "variant": "thinking",
         "skills": [
@@ -338,12 +356,18 @@
       },
       "oracle": {
         "model": [
-          "nvidia/nemotron-3.5-super-vl-120b-a12b",
           {
-            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "id": "nvidia/nemotron-3-ultra-550b-a55b",
             "variant": "thinking"
           },
-          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          {
+            "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          }
         ],
         "variant": "thinking",
         "skills": [
@@ -356,12 +380,18 @@
       },
       "council": {
         "model": [
-          "nvidia/nemotron-3.5-super-vl-120b-a12b",
           {
-            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
-            "variant": "high"
+            "id": "nvidia/nemotron-3-ultra-550b-a55b",
+            "variant": "thinking"
           },
-          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          {
+            "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          }
         ],
         "skills": [],
         "mcps": [],
@@ -371,11 +401,16 @@
       },
       "librarian": {
         "model": [
-          "nvidia/nemotron-3.5-lightning-30b-a3b",
-          "poolside/laguna-xs-2.1",
-          "meta/llama-guard-4-12b"
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "thinking"
+          },
+          "poolside/laguna-xs-2.1"
         ],
-        "variant": "low",
         "skills": [],
         "mcps": [
           "websearch",
@@ -388,9 +423,15 @@
       },
       "explorer": {
         "model": [
-          "nvidia/nemotron-3.5-lightning-30b-a3b",
-          "poolside/laguna-xs-2.1",
-          "meta/llama-guard-4-12b"
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "variant": "thinking"
+          },
+          "poolside/laguna-xs-2.1"
         ],
         "skills": [],
         "mcps": [],
@@ -400,12 +441,10 @@
       },
       "designer": {
         "model": [
-          "nvidia/nemotron-3.5-super-vl-120b-a12b",
           {
-            "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
-            "variant": "medium"
-          },
-          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+            "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "variant": "thinking"
+          }
         ],
         "skills": [
           "agent-browser"
@@ -417,9 +456,18 @@
       },
       "fixer": {
         "model": [
-          "nvidia/nemotron-3.5-lightning-30b-a3b",
-          "poolside/laguna-xs-2.1",
-          "meta/llama-guard-4-12b"
+          {
+            "id": "nvidia/nemotron-3-ultra-550b-a55b",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+            "variant": "thinking"
+          },
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          }
         ],
         "variant": "high",
         "skills": [],
@@ -430,12 +478,15 @@
       },
       "observer": {
         "model": [
-          "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          {
+            "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            "variant": "thinking"
+          },
           {
             "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
-            "variant": "low"
+            "variant": "thinking"
           },
-          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          "poolside/laguna-xs-2.1"
         ],
         "skills": [],
         "mcps": [],
