@@ -185,10 +185,7 @@
       "oracle": {
         "model": [
           "opencode/big-pickle",
-          {
-            "id": "opencode/crouton-alpha-free",
-            "variant": "high"
-          },
+          "opencode/longcat-2.5-free",
           {
             "id": "opencode/beam-free",
             "variant": "high"
@@ -208,10 +205,7 @@
             "id": "opencode/beam-free",
             "variant": "high"
           },
-          {
-            "id": "opencode/crouton-alpha-free",
-            "variant": "high"
-          },
+          "opencode/longcat-2.5-free",
           {
             "id": "opencode/inkling-2-small-free",
             "variant": "high"
@@ -230,10 +224,13 @@
             "variant": "low"
           },
           {
-            "id": "opencode/deepseek-v4.1-flash-free",
-            "variant": "low"
+            "id": "opencode/hy4-flash-free",
+            "variant": "high"
           },
-          "opencode/mimo-v2.6-flash-free"
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "low"
+          }
         ],
         "skills": [],
         "mcps": [
@@ -252,10 +249,13 @@
             "variant": "low"
           },
           {
-            "id": "opencode/deepseek-v4.1-flash-free",
-            "variant": "low"
+            "id": "opencode/hy4-flash-free",
+            "variant": "high"
           },
-          "opencode/mimo-v2.6-flash-free"
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
+            "variant": "low"
+          }
         ],
         "skills": [],
         "mcps": [],
@@ -266,15 +266,12 @@
       "designer": {
         "model": [
           {
-            "id": "opencode/nemotron-3.5-super-vl-free",
+            "id": "opencode/minimax-m3.1-flash-free",
             "variant": "medium"
           },
+          "opencode/longcat-2.5-free",
           {
             "id": "opencode/inkling-2-small-free",
-            "variant": "medium"
-          },
-          {
-            "id": "opencode/crouton-alpha-free",
             "variant": "medium"
           }
         ],
@@ -293,11 +290,11 @@
             "variant": "high"
           },
           {
-            "id": "opencode/crouton-alpha-free",
+            "id": "opencode/minimax-m3.1-flash-free",
             "variant": "high"
           },
           {
-            "id": "opencode/deepseek-v4.1-flash-free",
+            "id": "opencode/hy4-flash-free",
             "variant": "high"
           }
         ],
@@ -313,9 +310,12 @@
             "id": "opencode/inkling-2-small-free",
             "variant": "low"
           },
-          "opencode/nemotron-3.5-lightning-free",
           {
-            "id": "opencode/deepseek-v4.1-flash-free",
+            "id": "opencode/hy4-flash-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/minimax-m3.1-flash-free",
             "variant": "low"
           }
         ],
