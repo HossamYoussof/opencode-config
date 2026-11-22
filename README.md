@@ -6,8 +6,8 @@ Personal [OpenCode](https://opencode.ai) configuration with MCP servers, agent p
 
 | File | Purpose |
 |------|---------|
-| `opencode.json` | Main V2 config — mcp.servers, plugins (no agents block, no lsp) |
-| `oh-my-opencode-slim.json` | Agent model presets (opencode, openai, poe, opencode-go) |
+| `opencode.json` | Main V2 config — provider configurations (SovereignEG), mcp.servers, plugins (no agents block, no lsp) |
+| `oh-my-opencode-slim.json` | Agent model presets (opencode, openai, poe, opencode-go, nvidia, sovereigneg) |
 | `install.sh` | Installer for macOS / Linux / Windows (WSL/Git Bash) |
 | `install.ps1` | Installer for native Windows (PowerShell) |
 | `scripts/refresh-opencode/refresh-opencode-models.mjs` | Fetches latest free models from models.dev, updates presets + memory plugin |
@@ -48,6 +48,7 @@ The default preset is **opencode** — all free models, no API keys required.
 | `poe` | `poe/anthropic/claude-opus-4.8` | `poe/anthropic/claude-opus-4.8` | Poe subscribers |
 | `opencode-go` | `opencode-go/minimax-m3` | `opencode-go/qwen3.7-max` | OpenCode Go users |
 | `nvidia` | `nvidia/nemotron-3.5-super-vl-120b-a12b` (+ Lightning, Nano Omni fallbacks) | `nvidia/nemotron-3.5-super-vl-120b-a12b` (+ Lightning fallbacks) | NVIDIA NIM API users — reasoning/VL capable |
+| `sovereigneg` | `sovereigneg/claude-opus-4.8` (+ Qwen3.8 Max, Qwen3.8-27B-FP8, Sonnet 4.6 fallbacks) | `sovereigneg/claude-opus-4.8` (+ DeepSeek V3.1 Terminus, Beam 1.0, Qwen4 Max fallbacks) | [SovereignEG](https://sovereigneg.com/docs) users — Egypt-hosted & frontier models billed in EGP |
 
 Switch presets by changing `"preset": "opencode"` in `oh-my-opencode-slim.json`.
 
