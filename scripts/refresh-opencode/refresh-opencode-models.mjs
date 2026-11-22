@@ -560,6 +560,32 @@ function pickTopN(models, scored, currentModels, keepMargin, n) {
   return topN;
 }
 
+/**
+ * If opencode/big-pickle is available and not already in the agent model list,
+ * set it as the fourth fallback model (index 3).
+ *
+ * @param {Array<string|object>} picked - Current picked models
+ * @param {boolean} isBigPickleAvailable - Whether opencode/big-pickle is available in candidates
+ * @param {string} [bigPickleId='big-pickle'] - Model ID for big-pickle
+ * @returns {Array<string|object>} Updated picked array
+ */
+function applyBigPickleFallback(picked, isBigPickleAvailable, bigPickleId = 'big-pickle') {
+  if (!isBigPickleAvailable || !Array.isArray(picked)) return picked;
+  const alreadyInList = picked.some(m => {
+    const id = typeof m === 'string' ? m : m?.id;
+    return stripModelPrefix(id)?.trim().toLowerCase() === 'big-pickle';
+  });
+  if (alreadyInList) return picked;
+
+  const result = [...picked];
+  if (result.length >= 3) {
+    result[3] = bigPickleId;
+  } else {
+    result.push(bigPickleId);
+  }
+  return result;
+}
+
 function loadConfig(path) {
   const full = resolve(ROOT, path);
   if (!existsSync(full)) exit(1, `Config not found: ${full}`);
@@ -715,6 +741,9 @@ Options:
   }
 
   const candidatesById = new Map(candidates.map((m) => [stripModelPrefix(m.id), m]));
+  const bigPickleCandidate = candidates.find(
+    (c) => stripModelPrefix(c.id)?.trim().toLowerCase() === 'big-pickle'
+  );
 
   // Pick top N per role with hysteresis (N from role config)
   const results = [];
@@ -754,6 +783,10 @@ Options:
       const missing = currentStripped.some((m, i) => m && !candidates.some(c => c.id === m));
       if (missing) forced = true;
       picked = pickTopN(candidates, scored, currentStripped, roleCfg.keepMargin || 0.15, n);
+    }
+
+    if (bigPickleCandidate) {
+      picked = applyBigPickleFallback(picked, true, bigPickleCandidate.id);
     }
 
     // Build per-model variant assignments for picked models.
@@ -875,6 +908,7 @@ export {
   parseModelArray,
   serializeModelArray,
   pickBestVariant,
+  applyBigPickleFallback,
   ROLE_VARIANT_PRIORITY,
   VARIANT_NEAREST,
   DEFAULT_REASONING_VARIANTS,

@@ -25,6 +25,7 @@ import {
   pickBestVariant,
   parseModelArray,
   serializeModelArray,
+  applyBigPickleFallback,
 } from './refresh-opencode-models.mjs';
 
 function runScript(args, env = {}) {
@@ -533,5 +534,58 @@ describe('variant support', () => {
     assert.ok(report.includes('Variants'));
     assert.ok(report.includes('low'));
     assert.ok(report.includes('offline'));
+  });
+});
+
+describe('big-pickle fallback support', () => {
+  test('returns picked unchanged when big-pickle is unavailable', () => {
+    const picked = ['model-a', 'model-b', 'model-c'];
+    assert.deepEqual(applyBigPickleFallback(picked, false), ['model-a', 'model-b', 'model-c']);
+  });
+
+  test('returns picked unchanged if big-pickle is already in the list (bare string)', () => {
+    const picked = ['model-a', 'big-pickle', 'model-c'];
+    assert.deepEqual(applyBigPickleFallback(picked, true), ['model-a', 'big-pickle', 'model-c']);
+  });
+
+  test('returns picked unchanged if big-pickle is already in the list (prefixed)', () => {
+    const picked = ['opencode/big-pickle', 'model-b', 'model-c'];
+    assert.deepEqual(applyBigPickleFallback(picked, true), ['opencode/big-pickle', 'model-b', 'model-c']);
+  });
+
+  test('returns picked unchanged if big-pickle is already in the list (object with id)', () => {
+    const picked = [{ id: 'opencode/big-pickle', variant: null }, 'model-b', 'model-c'];
+    assert.deepEqual(applyBigPickleFallback(picked, true), [{ id: 'opencode/big-pickle', variant: null }, 'model-b', 'model-c']);
+  });
+
+  test('sets big-pickle as fourth model when 3 models are present', () => {
+    const picked = ['model-a', 'model-b', 'model-c'];
+    const res = applyBigPickleFallback(picked, true, 'big-pickle');
+    assert.deepEqual(res, ['model-a', 'model-b', 'model-c', 'big-pickle']);
+    assert.equal(res[3], 'big-pickle');
+  });
+
+  test('sets big-pickle at index 3 when 4 models are present', () => {
+    const picked = ['model-a', 'model-b', 'model-c', 'model-d'];
+    const res = applyBigPickleFallback(picked, true, 'big-pickle');
+    assert.deepEqual(res, ['model-a', 'model-b', 'model-c', 'big-pickle']);
+  });
+
+  test('appends big-pickle when fewer than 3 models are present', () => {
+    const picked = ['model-a', 'model-b'];
+    assert.deepEqual(applyBigPickleFallback(picked, true, 'big-pickle'), ['model-a', 'model-b', 'big-pickle']);
+  });
+
+  test('supports custom big-pickle ID (e.g. prefixed)', () => {
+    const picked = ['model-a', 'model-b', 'model-c'];
+    assert.deepEqual(
+      applyBigPickleFallback(picked, true, 'opencode/big-pickle'),
+      ['model-a', 'model-b', 'model-c', 'opencode/big-pickle']
+    );
+  });
+
+  test('handles non-array inputs gracefully', () => {
+    assert.equal(applyBigPickleFallback(null, true), null);
+    assert.equal(applyBigPickleFallback(undefined, true), undefined);
   });
 });
