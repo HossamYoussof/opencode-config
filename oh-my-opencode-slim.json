@@ -162,6 +162,10 @@
       "orchestrator": {
         "model": [
           {
+            "id": "opencode/qwen4-max-free",
+            "variant": "high"
+          },
+          {
             "id": "opencode/beam-free",
             "variant": "high"
           },
@@ -185,9 +189,12 @@
       "oracle": {
         "model": [
           "opencode/big-pickle",
-          "opencode/longcat-2.5-free",
           {
-            "id": "opencode/beam-free",
+            "id": "opencode/qwen4-max-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/tidepool-alpha-free",
             "variant": "high"
           }
         ],
@@ -202,14 +209,18 @@
       "council": {
         "model": [
           {
-            "id": "opencode/beam-free",
+            "id": "opencode/qwen4-max-free",
             "variant": "high"
           },
-          "opencode/longcat-2.5-free",
           {
-            "id": "opencode/inkling-2-small-free",
+            "id": "opencode/tidepool-alpha-free",
             "variant": "high"
-          }
+          },
+          {
+            "id": "opencode/hy4-flash-free",
+            "variant": "high"
+          },
+          "opencode/big-pickle"
         ],
         "skills": [],
         "mcps": [],
@@ -220,17 +231,15 @@
       "librarian": {
         "model": [
           {
-            "id": "opencode/inkling-2-small-free",
-            "variant": "low"
-          },
-          {
             "id": "opencode/hy4-flash-free",
             "variant": "high"
           },
           {
-            "id": "opencode/minimax-m3.1-flash-free",
+            "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
-          }
+          },
+          "opencode/mimo-v2.6-flash-free",
+          "opencode/big-pickle"
         ],
         "skills": [],
         "mcps": [
@@ -245,17 +254,15 @@
       "explorer": {
         "model": [
           {
-            "id": "opencode/inkling-2-small-free",
-            "variant": "low"
-          },
-          {
             "id": "opencode/hy4-flash-free",
             "variant": "high"
           },
           {
-            "id": "opencode/minimax-m3.1-flash-free",
+            "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
-          }
+          },
+          "opencode/mimo-v2.6-flash-free",
+          "opencode/big-pickle"
         ],
         "skills": [],
         "mcps": [],
@@ -266,14 +273,18 @@
       "designer": {
         "model": [
           {
-            "id": "opencode/minimax-m3.1-flash-free",
-            "variant": "medium"
+            "id": "opencode/qwen4-max-free",
+            "variant": "low"
           },
-          "opencode/longcat-2.5-free",
           {
-            "id": "opencode/inkling-2-small-free",
-            "variant": "medium"
-          }
+            "id": "opencode/hy4-flash-free",
+            "variant": "high"
+          },
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
+            "variant": "low"
+          },
+          "opencode/big-pickle"
         ],
         "skills": [
           "agent-browser"
@@ -286,17 +297,18 @@
       "fixer": {
         "model": [
           {
-            "id": "opencode/inkling-2-small-free",
-            "variant": "high"
-          },
-          {
-            "id": "opencode/minimax-m3.1-flash-free",
+            "id": "opencode/qwen4-max-free",
             "variant": "high"
           },
           {
             "id": "opencode/hy4-flash-free",
             "variant": "high"
-          }
+          },
+          {
+            "id": "opencode/deepseek-v4.1-flash-free",
+            "variant": "high"
+          },
+          "opencode/big-pickle"
         ],
         "skills": [],
         "mcps": [],
@@ -307,17 +319,15 @@
       "observer": {
         "model": [
           {
-            "id": "opencode/inkling-2-small-free",
-            "variant": "low"
-          },
-          {
             "id": "opencode/hy4-flash-free",
             "variant": "high"
           },
           {
-            "id": "opencode/minimax-m3.1-flash-free",
+            "id": "opencode/deepseek-v4.1-flash-free",
             "variant": "low"
-          }
+          },
+          "opencode/nemotron-3.5-lightning-free",
+          "opencode/big-pickle"
         ],
         "skills": [],
         "mcps": [],
