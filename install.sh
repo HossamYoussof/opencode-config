@@ -25,6 +25,7 @@ err()   { printf "${RED}✘ %s${NC}\n" "$*" >&2; exit 1; }
 # ---- installer options (set via flags; see usage in main) ----
 NON_INTERACTIVE=0
 SKIP_MCP=0
+INSTALL_TYPE="${OPENCODE_INSTALL_TYPE:-}"
 
 # Set to 1 when THIS run actually persists a new secret via
 # customize_opencode_json (gates the auto service-restart in main so
@@ -635,7 +636,7 @@ get_desktop_download_url() {
 
   if command -v curl &>/dev/null && command -v python3 &>/dev/null; then
     local json_response
-    json_response="$(curl -fsSL "$api_url" 2>/dev/null || true)"
+    json_response="$(curl -fsSL --connect-timeout 5 --max-time 10 "$api_url" 2>/dev/null || true)"
     if [[ -n "$json_response" ]]; then
       download_url="$(python3 -c "
 import sys, json
@@ -904,35 +905,108 @@ deploy_configs() {
   _STAGING_FILE=""
 }
 
+prompt_install_type() {
+  if [[ -n "$INSTALL_TYPE" ]]; then
+    case "$(echo "$INSTALL_TYPE" | tr '[:upper:]' '[:lower:]')" in
+      terminal|cli|1) INSTALL_TYPE="terminal" ;;
+      desktop|gui|app|2) INSTALL_TYPE="desktop" ;;
+      both|all|3) INSTALL_TYPE="both" ;;
+      *)
+        warn "Unknown OPENCODE_INSTALL_TYPE '${INSTALL_TYPE}', defaulting to 'terminal'."
+        INSTALL_TYPE="terminal"
+        ;;
+    esac
+    return 0
+  fi
+
+  if [[ "$NON_INTERACTIVE" -eq 1 || ! -t 0 ]]; then
+    info "Non-interactive mode: defaulting to Terminal installation."
+    INSTALL_TYPE="terminal"
+    return 0
+  fi
+
+  echo ""
+  info "What type of OpenCode installation would you like?"
+  echo "  1) Terminal (CLI) [default]"
+  echo "  2) Desktop (GUI App)"
+  echo "  3) Both"
+  local choice=""
+  read -r -p "Enter choice [1-3, default: 1]: " choice || true
+  case "${choice:-1}" in
+    2|[dD]|[dD][eE][sS][kK][tT][oO][pP])
+      INSTALL_TYPE="desktop"
+      ;;
+    3|[bB]|[bB][oO][tT][hH])
+      INSTALL_TYPE="both"
+      ;;
+    *)
+      INSTALL_TYPE="terminal"
+      ;;
+  esac
+}
+
 main() {
   MODIFIED_RC_FILES=()
   SECRETS_SAVED_THIS_RUN=0
 
   # Flags (also documented in README): --non-interactive uses credential
   # values from the environment instead of prompting; --skip-mcp skips the
-  # MCP credential step entirely.
-  # NB: `for arg in "$@"` with zero args trips `set -u` on bash 3.2
-  # (macOS system bash), so only iterate when args exist.
-  if [[ $# -gt 0 ]]; then
-    local arg
-    for arg in "$@"; do
-      case "$arg" in
-        --non-interactive) NON_INTERACTIVE=1 ;;
-        --skip-mcp) SKIP_MCP=1 ;;
-        -h|--help)
-          echo "Usage: ./install.sh [--non-interactive] [--skip-mcp]"
-          echo ""
-          echo "  --non-interactive  Read GITHUB_PAT / JENKINS_URL / JENKINS_BASIC_AUTH"
-          echo "                     from the environment; never prompt."
-          echo "  --skip-mcp         Skip MCP credential prompts entirely."
-          return 0
-          ;;
-        *)
-          warn "Unknown argument: ${arg} (ignored)"
-          ;;
-      esac
-    done
-  fi
+  # MCP credential step entirely; --type/--terminal/--desktop/--both select
+  # installation targets.
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --non-interactive)
+        NON_INTERACTIVE=1
+        shift
+        ;;
+      --skip-mcp)
+        SKIP_MCP=1
+        shift
+        ;;
+      --type)
+        if [[ $# -ge 2 ]]; then
+          INSTALL_TYPE="$2"
+          shift 2
+        else
+          err "--type requires an argument (terminal, desktop, or both)"
+        fi
+        ;;
+      --type=*)
+        INSTALL_TYPE="${1#*=}"
+        shift
+        ;;
+      --terminal)
+        INSTALL_TYPE="terminal"
+        shift
+        ;;
+      --desktop)
+        INSTALL_TYPE="desktop"
+        shift
+        ;;
+      --both)
+        INSTALL_TYPE="both"
+        shift
+        ;;
+      -h|--help)
+        echo "Usage: ./install.sh [options]"
+        echo ""
+        echo "Options:"
+        echo "  --type <type>      Install type: 'terminal', 'desktop', or 'both'."
+        echo "  --terminal         Install OpenCode Terminal (CLI) only."
+        echo "  --desktop          Install OpenCode Desktop (GUI App) only."
+        echo "  --both             Install both Terminal and Desktop."
+        echo "  --non-interactive  Read GITHUB_PAT / JENKINS_URL / JENKINS_BASIC_AUTH"
+        echo "                     from the environment; never prompt."
+        echo "  --skip-mcp         Skip MCP credential prompts entirely."
+        echo "  -h, --help         Show this help message."
+        return 0
+        ;;
+      *)
+        warn "Unknown argument: $1 (ignored)"
+        shift
+        ;;
+    esac
+  done
   if [[ "$SKIP_MCP" -eq 1 ]]; then
     NON_INTERACTIVE=1
   fi
@@ -947,18 +1021,29 @@ main() {
   os="$(detect_os)"
   info "Detected OS: ${os}"
 
-  local method
-  method="$(detect_install_method "$os")"
-  info "Install method: ${method}"
+  prompt_install_type
 
-  install_opencode "$method"
+  if [[ "$INSTALL_TYPE" == "terminal" || "$INSTALL_TYPE" == "both" ]]; then
+    local method
+    method="$(detect_install_method "$os")"
+    info "Install method: ${method}"
+    install_opencode "$method"
+  fi
+
+  if [[ "$INSTALL_TYPE" == "desktop" || "$INSTALL_TYPE" == "both" ]]; then
+    download_and_install_desktop "$os"
+  fi
 
   local cfg_dir
   cfg_dir="$(config_dir "$os")"
   deploy_configs "$cfg_dir"
 
   echo ""
-  ok "All done! Run 'opencode' to get started."
+  if [[ "$INSTALL_TYPE" == "desktop" ]]; then
+    ok "All done! Open OpenCode Desktop to get started."
+  else
+    ok "All done! Run 'opencode' to get started."
+  fi
   echo ""
 
   print_path_next_steps
