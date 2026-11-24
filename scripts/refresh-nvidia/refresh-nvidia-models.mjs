@@ -41,12 +41,9 @@ const NVIDIA_API_BASE = 'https://integrate.api.nvidia.com/v1';
 const ROLE_ORDER = [
   'orchestrator',
   'oracle',
-  'council',
-  'librarian',
   'explorer',
   'designer',
-  'fixer',
-  'observer'
+  'fixer'
 ];
 
 // ---------------------------------------------------------------------------
@@ -705,6 +702,9 @@ Options:
   // Build new config
   const newConfig = JSON.parse(configRaw);
   for (const r of results) {
+    if (!newConfig.presets.nvidia[r.role]) {
+      newConfig.presets.nvidia[r.role] = { skills: [] };
+    }
     newConfig.presets.nvidia[r.role].model = serializeModelArray(
       r.picked.map(p => typeof p === 'string' ? { id: p, variant: null } : p)
     );
@@ -713,6 +713,9 @@ Options:
     } else if (r.variantChanged && r.variant != null) {
       newConfig.presets.nvidia[r.role].variant = r.variant;
     }
+  }
+  for (const role of ['librarian', 'council', 'observer']) {
+    delete newConfig.presets.nvidia[role];
   }
 
   const newRaw = JSON.stringify(newConfig, null, 2);

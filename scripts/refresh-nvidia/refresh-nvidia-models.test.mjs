@@ -325,7 +325,7 @@ describe('variant support', () => {
 
   test('resolveVariant primary with no variants removes variant key', () => {
     const r = resolveVariant({
-      role: 'observer',
+      role: 'explorer',
       currentVariant: 'low',
       pickedIds: ['a', 'b'],
       candidatesById: byId({ a: {}, b: {} }),
@@ -338,7 +338,7 @@ describe('variant support', () => {
 
   test('resolveVariant no key + primary empty -> no change, no removal', () => {
     const r = resolveVariant({
-      role: 'observer',
+      role: 'explorer',
       currentVariant: undefined,
       pickedIds: ['a'],
       candidatesById: byId({ a: {} }),
