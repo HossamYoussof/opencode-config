@@ -133,7 +133,7 @@ node scripts/refresh-opencode/refresh-opencode-models.mjs
 
 The script:
 - Fetches the latest free opencode models from models.dev
-- Scores and picks the best models for each agent role (orchestrator, oracle, librarian, explorer, designer, fixer, observer)
+- Scores and picks the best models for each agent role (orchestrator, oracle, explorer, designer, fixer)
 - Validates each role's `variant` against the picked models' supported reasoning variants
 - Runs in CI with `--check` (exits 1 if changes would be made)
 
@@ -157,7 +157,7 @@ The script:
 - Requires `NVIDIA_API_KEY` for catalog authentication
 - Filters to 8 known-working models with hardcoded metadata from prior live testing
 - Live-tests each candidate via a chat completion before selection (`--test-live`)
-- Picks top models per agent role (orchestrator, oracle, council, librarian, explorer, designer, fixer, observer)
+- Picks top models per agent role (orchestrator, oracle, explorer, designer, fixer)
 - Handles `nvidia/`, `poolside/`, and `meta/` org prefixes correctly
 - Runs in CI with `--check` (exits 1 if changes would be made)
 
@@ -210,7 +210,7 @@ Edit `oh-my-opencode-slim.json` → change the `preset` field:
 
 ### Add a new preset
 
-Add an entry under `presets` in `oh-my-opencode-slim.json` following the existing structure (orchestrator, oracle, librarian, explorer, designer, fixer agent configs).
+Add an entry under `presets` in `oh-my-opencode-slim.json` following the existing structure (orchestrator, oracle, explorer, designer, fixer agent configs).
 
 ### Persistent Memory (manual config)
 

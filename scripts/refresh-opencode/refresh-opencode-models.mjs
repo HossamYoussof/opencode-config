@@ -41,12 +41,9 @@ const DEFAULT_ROLES = 'scripts/refresh-opencode/opencode-model-roles.json';
 const ROLE_ORDER = [
   'orchestrator',
   'oracle',
-  'council',
-  'librarian',
   'explorer',
   'designer',
-  'fixer',
-  'observer'
+  'fixer'
 ];
 
 // ---------------------------------------------------------------------------
@@ -852,6 +849,9 @@ Options:
   // Build new config (preserve everything else byte-for-byte)
   const newConfig = JSON.parse(configRaw); // preserves key order via parse/stringify
   for (const r of results) {
+    if (!newConfig.presets.opencode[r.role]) {
+      newConfig.presets.opencode[r.role] = { skills: [] };
+    }
     newConfig.presets.opencode[r.role].model = serializeModelArray(
       r.picked.map(p => typeof p === 'string' ? { id: p, variant: null } : p)
     );
@@ -861,6 +861,9 @@ Options:
       // Keep agent-level variant as fallback for models without per-model variant
       newConfig.presets.opencode[r.role].variant = r.variant;
     }
+  }
+  for (const role of ['librarian', 'council', 'observer']) {
+    delete newConfig.presets.opencode[role];
   }
 
   const newRaw = JSON.stringify(newConfig, null, 2); // NO trailing newline

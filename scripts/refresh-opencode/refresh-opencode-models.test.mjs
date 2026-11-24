@@ -380,7 +380,7 @@ describe('variant support', () => {
 
   test('resolveVariant primary with no variants removes variant key', () => {
     const r = resolveVariant({
-      role: 'observer',
+      role: 'explorer',
       currentVariant: 'low',
       pickedIds: ['a', 'b'],
       candidatesById: byId({ a: { reasoning: false }, b: { reasoning: false } }),
@@ -393,7 +393,7 @@ describe('variant support', () => {
 
   test('resolveVariant mimo-primary ([], toggle, []) removes variant key', () => {
     const r = resolveVariant({
-      role: 'librarian',
+      role: 'explorer',
       currentVariant: 'low',
       pickedIds: ['mimo', 'deepseek', 'nemotron'],
       candidatesById: byId({
@@ -409,7 +409,7 @@ describe('variant support', () => {
 
   test('resolveVariant no key + primary empty -> no change, no removal', () => {
     const r = resolveVariant({
-      role: 'observer',
+      role: 'explorer',
       currentVariant: undefined,
       pickedIds: ['a'],
       candidatesById: byId({ a: { reasoning: false } }),
