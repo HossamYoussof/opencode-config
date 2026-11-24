@@ -53,37 +53,82 @@ Switch presets by changing `"preset": "opencode"` in `oh-my-opencode-slim.json`.
 
 ## Quick Install
 
+The installers support **Terminal (CLI)**, **Desktop (GUI App)**, or **Both**:
+- **Terminal (CLI)**: Installs the `opencode` command-line tool.
+- **Desktop (GUI App)**: Downloads the official OS-specific installer (`.dmg` on macOS, `.exe` on Windows, `.AppImage` on Linux) to `~/Downloads` and launches it.
+- **Both**: Installs both the CLI and Desktop application.
+
+Regardless of the selected type, configuration files (`opencode.json` and `oh-my-opencode-slim.json`) are deployed to the global config directory so both CLI and Desktop share your presets and MCP servers.
+
+In interactive mode, the installer prompts you to choose your installation type. In non-interactive mode or automated scripts, it defaults to **Terminal** unless overridden by CLI flags or the `OPENCODE_INSTALL_TYPE` environment variable (`terminal`, `desktop`, or `both`).
+
 ### macOS / Linux
 
 ```bash
 git clone https://github.com/HossamYoussof/opencode-config.git opencode-config && cd opencode-config
 ./install.sh
+
+# Choose target via flags:
+# ./install.sh --desktop         # Desktop GUI app only
+# ./install.sh --terminal        # Terminal CLI only
+# ./install.sh --both            # Both Desktop and Terminal
+# ./install.sh --type desktop    # Alternative using --type <terminal|desktop|both>
 ```
 
-Install method auto-detected in order: **curl** → **npm** → **brew** (macOS only).
+**Options & Flags:**
+- `--type <terminal|desktop|both>`: Select installation type.
+- `--desktop`: Install OpenCode Desktop (GUI App) only.
+- `--terminal`: Install OpenCode Terminal (CLI) only.
+- `--both`: Install both Terminal and Desktop.
+- `--non-interactive`: Read `GITHUB_PAT` / `JENKINS_URL` / `JENKINS_BASIC_AUTH` from env, never prompt (defaults to Terminal if type unspecified).
+- `--skip-mcp`: Skip MCP credential prompts entirely.
+- `OPENCODE_INSTALL_TYPE`: Set via environment variable (`export OPENCODE_INSTALL_TYPE=desktop`).
 
-Flags: `--non-interactive` (read `GITHUB_PAT` / `JENKINS_URL` / `JENKINS_BASIC_AUTH` from env, never prompt) and `--skip-mcp` (skip credentials entirely).
+**How it works:**
+- **Terminal**: Install method auto-detected in order: **curl** → **npm** → **brew** (macOS only).
+- **Desktop**: Fetches the latest release metadata from the OpenCode API, downloads the installer to `~/Downloads` (`.dmg` for macOS, `.AppImage` for Linux, `.exe` for Windows under WSL/Git Bash), and launches it (on macOS, mounts DMG, copies `OpenCode.app` to `/Applications`, and opens it).
 
 ### Windows (PowerShell)
 
 ```powershell
 git clone https://github.com/HossamYoussof/opencode-config.git opencode-config; cd opencode-config
 .\install.ps1
+
+# Choose target via parameters:
+# .\install.ps1 -Desktop         # Desktop GUI app only
+# .\install.ps1 -Terminal        # Terminal CLI only
+# .\install.ps1 -Both            # Both Desktop and Terminal
+# .\install.ps1 -Type Desktop    # Alternative using -Type <Terminal|Desktop|Both>
+
 # Non-interactive (skips credential + star prompts; honors params/env):
 # .\install.ps1 -NonInteractive
+# .\install.ps1 -Desktop -NonInteractive
 # .\install.ps1 -JenkinsUrl "https://jenkins.example.com/mcp-server/mcp" -NonInteractive
 # .\install.ps1 -SkipStar
 ```
 
-`install.ps1` also accepts `-GithubPat` / `-JenkinsAuth` (SecureString preferred, plain string works) and falls back to `GITHUB_PAT` / `JENKINS_URL` (`JENKINS_MCP_URL`) / `JENKINS_BASIC_AUTH` (`JENKINS_AUTH`) from the process environment.
+**Parameters & Environment:**
+- `-Type <Terminal|Desktop|Both>`: Select installation type.
+- `-Desktop`: Install OpenCode Desktop (GUI App) only.
+- `-Terminal`: Install OpenCode Terminal (CLI) only.
+- `-Both`: Install both Terminal and Desktop.
+- `-NonInteractive`: Skips credential and star prompts (defaults to Terminal if type unspecified).
+- `$env:OPENCODE_INSTALL_TYPE`: Set via environment variable (`$env:OPENCODE_INSTALL_TYPE = "Desktop"`).
+- `-GithubPat` / `-JenkinsAuth`: Optional credentials (SecureString preferred, plain string works); falls back to `GITHUB_PAT` / `JENKINS_URL` (`JENKINS_MCP_URL`) / `JENKINS_BASIC_AUTH` (`JENKINS_AUTH`) from the process environment.
 
-Native Windows installs via **npm only** (`npm install -g @opencode/cli`). Windows package managers (winget/scoop/choco) install the old v1 build and are not supported — use WSL + `install.sh` if you need the curl method.
+**How it works:**
+- **Terminal**: Native Windows CLI installs via **npm only** (`npm install -g @opencode/cli`). Windows package managers (winget/scoop/choco) install the old v1 build and are not supported — use WSL + `install.sh` if you need the curl method.
+- **Desktop**: Fetches the latest release metadata from the OpenCode API, downloads the official Windows installer (`opencode-desktop-win-x64.exe` or `arm64`) to `$env:USERPROFILE\Downloads`, and launches the setup wizard.
+
+### What the Installers Do
 
 The scripts will:
-1. Install opencode if not already present (`install.sh`: curl → npm → brew on macOS; `install.ps1`: npm only)
-2. Optionally prompt for credentials — GitHub PAT + Jenkins URL/auth (Enter to skip). Secrets are saved to your shell rc (`~/.zshrc`/`~/.bashrc`) or User env (Windows) and exported to the session; they are **never** baked into `opencode.json`, which keeps `{env:GITHUB_PAT}` / `{env:JENKINS_BASIC_AUTH}` placeholders. Only the non-secret Jenkins URL is patched into the deployed JSON (and `disabled` is removed when URL or auth is provided).
-3. Copy config files to the global config directory, backing up any existing configs to `.bak.<timestamp>` first
-4. Auto-restart the background service when this run persisted a secret (`install.sh`: SECRETS_SAVED_THIS_RUN; `install.ps1`: $script:SavedSecrets), otherwise print the manual restart hint.
+1. **Resolve Installation Target**: Prompt for or resolve installation type (**Terminal**, **Desktop**, or **Both**).
+   - If Terminal is selected: install CLI if not already present.
+   - If Desktop is selected: download the official installer to `~/Downloads` and launch it.
+2. **Configure Credentials (Optional)**: Prompt for GitHub PAT + Jenkins URL/auth (Enter to skip). Secrets are saved to your shell rc (`~/.zshrc`/`~/.bashrc`) or User env (Windows) and exported to the session; they are **never** baked into `opencode.json`, which keeps `{env:GITHUB_PAT}` / `{env:JENKINS_BASIC_AUTH}` placeholders. Only the non-secret Jenkins URL is patched into the deployed JSON (and `disabled` is removed when URL or auth is provided).
+3. **Deploy Configs**: Copy `opencode.json` and `oh-my-opencode-slim.json` to the global config directory (for all install types), backing up any existing configs to `.bak.<timestamp>` first.
+4. **Restart Background Service**: Auto-restart the background service when this run persisted a secret (`install.sh`: SECRETS_SAVED_THIS_RUN; `install.ps1`: $script:SavedSecrets), otherwise print the manual restart hint.
 
 Post-install, reload your shell and verify:
 
@@ -248,7 +293,7 @@ Auto-capture (optional):
 
 ## Requirements
 
-- [OpenCode](https://opencode.ai) CLI installed
+- [OpenCode](https://opencode.ai) (CLI or Desktop) installed
 - [Node.js](https://nodejs.org/) + npm (for npx-based MCP servers)
 - API keys configured in OpenCode for non-free presets
 
