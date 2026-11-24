@@ -598,6 +598,119 @@ install_opencode() {
   return 0
 }
 
+# Resolve the desktop installer download URL and target filename for the current OS and architecture.
+# Prints: <download_url> <filename>
+get_desktop_download_url() {
+  local os="$1"
+  local arch
+  arch="$(uname -m 2>/dev/null || echo "x86_64")"
+
+  local target_file=""
+  case "$os" in
+    macos)
+      case "$arch" in
+        arm64|aarch64) target_file="opencode-desktop-mac-arm64.dmg" ;;
+        *)             target_file="opencode-desktop-mac-x64.dmg" ;;
+      esac
+      ;;
+    linux)
+      case "$arch" in
+        arm64|aarch64) target_file="opencode-desktop-linux-arm64.AppImage" ;;
+        *)             target_file="opencode-desktop-linux-x86_64.AppImage" ;;
+      esac
+      ;;
+    windows)
+      case "$arch" in
+        arm64|aarch64) target_file="opencode-desktop-win-arm64.exe" ;;
+        *)             target_file="opencode-desktop-win-x64.exe" ;;
+      esac
+      ;;
+    *)
+      err "Unsupported OS for Desktop installation: $os"
+      ;;
+  esac
+
+  local api_url="https://opencode.ai/update/api/latest/desktop"
+  local download_url=""
+
+  if command -v curl &>/dev/null && command -v python3 &>/dev/null; then
+    local json_response
+    json_response="$(curl -fsSL "$api_url" 2>/dev/null || true)"
+    if [[ -n "$json_response" ]]; then
+      download_url="$(python3 -c "
+import sys, json
+target = sys.argv[1]
+try:
+    data = json.loads(sys.argv[2])
+    files = data['artifacts'][0]['metadata']['files']
+    if target in files:
+        print(files[target]['url'])
+except Exception:
+    pass
+" "$target_file" "$json_response" 2>/dev/null || true)"
+    fi
+  fi
+
+  # Fallback to standard URL scheme if API lookup failed
+  if [[ -z "$download_url" ]]; then
+    local fallback_version="2.4.1"
+    download_url="https://opencode.ai/files/bin/${fallback_version}/${target_file}"
+  fi
+
+  printf '%s %s\n' "$download_url" "$target_file"
+}
+
+# Download and launch the Desktop installer
+download_and_install_desktop() {
+  local os="$1"
+  info "Resolving OpenCode Desktop download..."
+
+  local info_str
+  info_str="$(get_desktop_download_url "$os")"
+  local download_url filename
+  download_url="$(echo "$info_str" | awk '{print $1}')"
+  filename="$(echo "$info_str" | awk '{print $2}')"
+
+  local download_dir="$HOME/Downloads"
+  if [[ ! -d "$download_dir" || ! -w "$download_dir" ]]; then
+    download_dir="${TMPDIR:-/tmp}"
+  fi
+
+  local target_path="${download_dir}/${filename}"
+
+  info "Downloading OpenCode Desktop (${filename}) to ${download_dir}..."
+  if command -v curl &>/dev/null; then
+    if ! curl -fL --progress-bar "$download_url" -o "$target_path"; then
+      err "Failed to download OpenCode Desktop from $download_url"
+    fi
+  elif command -v wget &>/dev/null; then
+    if ! wget -q --show-progress "$download_url" -O "$target_path"; then
+      err "Failed to download OpenCode Desktop from $download_url"
+    fi
+  else
+    err "Neither curl nor wget found. Cannot download OpenCode Desktop."
+  fi
+
+  ok "Downloaded OpenCode Desktop → ${target_path}"
+
+  case "$os" in
+    macos)
+      info "Opening installer image in Finder..."
+      open "$target_path" || warn "Could not open ${target_path} automatically. Open it manually in Finder."
+      ok "OpenCode Desktop installer opened. Drag OpenCode.app to Applications to complete setup."
+      ;;
+    linux)
+      chmod +x "$target_path" || true
+      info "OpenCode Desktop saved as executable AppImage: ${target_path}"
+      info "You can run it with: '${target_path}' or move it to ~/.local/bin/"
+      ;;
+    windows)
+      info "Launching installer..."
+      cmd.exe /c start "" "$target_path" 2>/dev/null || warn "Could not launch ${target_path} automatically. Run it from File Explorer."
+      ;;
+  esac
+}
+
 customize_opencode_json() {
   local src_file="$1"
   local staging_file="$2"
