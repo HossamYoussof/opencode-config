@@ -4,6 +4,14 @@
 .DESCRIPTION
     Installs opencode and deploys opencode.json + oh-my-opencode-slim.json
     to the global config directory.
+.PARAMETER Type
+    Installation type: 'Terminal', 'Desktop', or 'Both'.
+.PARAMETER Terminal
+    Install OpenCode Terminal (CLI) only.
+.PARAMETER Desktop
+    Install OpenCode Desktop (GUI App) only.
+.PARAMETER Both
+    Install both Terminal and Desktop.
 .PARAMETER GithubPat
     Optional GitHub PAT (SecureString preferred, plain string accepted).
     Falls back to $env:GITHUB_PAT when omitted.
@@ -22,12 +30,20 @@
 .EXAMPLE
     .\install.ps1 -NonInteractive
 .EXAMPLE
+    .\install.ps1 -Type Desktop
+.EXAMPLE
+    .\install.ps1 -Both
+.EXAMPLE
     .\install.ps1 -JenkinsUrl "https://jenkins.example.com/mcp-server/mcp" -NonInteractive
 #>
 
 #Requires -Version 5.1
 
 param(
+    [Parameter()][ValidateSet("Terminal", "Desktop", "Both")][string]$Type = "",
+    [Parameter()][switch]$Terminal,
+    [Parameter()][switch]$Desktop,
+    [Parameter()][switch]$Both,
     [Parameter()][object]$GithubPat = $null,
     [Parameter()][string]$JenkinsUrl = "",
     [Parameter()][object]$JenkinsAuth = $null,
@@ -555,57 +571,162 @@ function Deploy-Configs {
     Write-Info "Restart it with: opencode service restart ; then verify with: opencode mcp list"
 }
 
+# Resolve desktop installer download URL and target filename for Windows
+function Get-DesktopDownloadInfo {
+    $isArm = ($env:PROCESSOR_ARCHITECTURE -eq "ARM64")
+    $targetFile = if ($isArm) { "opencode-desktop-win-arm64.exe" } else { "opencode-desktop-win-x64.exe" }
+    $apiUrl = "https://opencode.ai/update/api/latest/desktop"
+    $downloadUrl = ""
+
+    try {
+        $response = Invoke-RestMethod -Uri $apiUrl -Method Get -TimeoutSec 10 -ErrorAction Stop
+        if ($response.artifacts -and $response.artifacts[0].metadata -and $response.artifacts[0].metadata.files) {
+            $files = $response.artifacts[0].metadata.files
+            if ($files.PSObject.Properties[$targetFile]) {
+                $downloadUrl = $files.$targetFile.url
+            }
+        }
+    } catch {
+        Write-Warn "Could not fetch latest desktop release metadata from API: $_"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($downloadUrl)) {
+        $fallbackVersion = "2.4.1"
+        $downloadUrl = "https://opencode.ai/files/bin/$fallbackVersion/$targetFile"
+    }
+
+    return @{
+        Url = $downloadUrl
+        Filename = $targetFile
+    }
+}
+
+# Download and execute the OpenCode Desktop installer
+function Download-And-Install-Desktop {
+    Write-Info "Resolving OpenCode Desktop download..."
+    $info = Get-DesktopDownloadInfo
+    $downloadUrl = $info.Url
+    $filename = $info.Filename
+
+    $downloadDir = Join-Path -Path $env:USERPROFILE -ChildPath "Downloads"
+    if (-not (Test-Path -Path $downloadDir)) {
+        $downloadDir = [IO.Path]::GetTempPath()
+    }
+
+    $targetPath = Join-Path -Path $downloadDir -ChildPath $filename
+    Write-Info "Downloading OpenCode Desktop ($filename) to $downloadDir..."
+
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $targetPath -UseBasicParsing
+        Write-Ok "Downloaded OpenCode Desktop → $targetPath"
+        Write-Info "Launching installer..."
+        Start-Process -FilePath $targetPath
+        Write-Ok "OpenCode Desktop installer launched. Follow the setup wizard to complete installation."
+    } catch {
+        Write-Err "Failed to download OpenCode Desktop from $downloadUrl: $_"
+    }
+}
+
+# Determine the installation type: Terminal, Desktop, or Both
+function Get-InstallType {
+    if ($Both) { return "Both" }
+    if ($Desktop) { return "Desktop" }
+    if ($Terminal) { return "Terminal" }
+    if (-not [string]::IsNullOrWhiteSpace($Type)) {
+        switch ($Type.Trim().ToLowerInvariant()) {
+            "desktop" { return "Desktop" }
+            "both"    { return "Both" }
+            default   { return "Terminal" }
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:OPENCODE_INSTALL_TYPE)) {
+        switch ($env:OPENCODE_INSTALL_TYPE.Trim().ToLowerInvariant()) {
+            "desktop" { return "Desktop" }
+            "both"    { return "Both" }
+            default   { return "Terminal" }
+        }
+    }
+
+    if ($NonInteractive) {
+        Write-Info "Non-interactive mode: defaulting to Terminal installation."
+        return "Terminal"
+    }
+
+    Write-Host ""
+    Write-Info "What type of OpenCode installation would you like?"
+    Write-Host "  1) Terminal (CLI) [default]"
+    Write-Host "  2) Desktop (GUI App)"
+    Write-Host "  3) Both"
+    $choice = ""
+    try { $choice = Read-Host "Enter choice [1-3, default: 1]" } catch { $choice = "1" }
+    switch ($choice.Trim()) {
+        "2" { return "Desktop" }
+        "3" { return "Both" }
+        default { return "Terminal" }
+    }
+}
+
 # Main
 function Main {
     Write-Host ""
     Write-Host "OpenCode Installer Script" -ForegroundColor $Cyan
     Write-Host ""
 
+    $installType = Get-InstallType
+    Write-Info "Install type: $installType"
+
     $cfgDir = Get-ConfigDir
     Write-Info "Config directory: $cfgDir"
 
-    $method = Get-InstallMethod
-    Write-Info "Install method: $method"
+    # Step 1 - Install opencode CLI if requested
+    if ($installType -eq "Terminal" -or $installType -eq "Both") {
+        $method = Get-InstallMethod
+        Write-Info "Install method: $method"
+        Install-Opencode -Method $method
+    }
 
-    # Step 1 - Install opencode
-    Install-Opencode -Method $method
+    # Step 2 - Download and install desktop if requested
+    if ($installType -eq "Desktop" -or $installType -eq "Both") {
+        Download-And-Install-Desktop
+    }
 
-    # Step 2 - Deploy config files
+    # Step 3 - Deploy config files (applies to Terminal, Desktop, and Both)
     Deploy-Configs -TargetDir $cfgDir -GithubPat $GithubPat -JenkinsUrl $JenkinsUrl -JenkinsAuth $JenkinsAuth -NonInteractive:$NonInteractive
 
-    # This installer session already has new secrets in $env:, so a restart
-    # from here hands them to the background service directly.
-    # NOTE: native-command nonzero exits do NOT throw under
-    # $ErrorActionPreference='Stop' in 5.1, so check $LASTEXITCODE explicitly
-    # and never abort the install here.
-    # Only auto-restart when THIS run actually persisted a secret
-    # ($script:SavedSecrets); inherited session env alone must not trigger it.
-    if ($script:SavedSecrets) {
-        Write-Info "MCP secrets are set in this session - restarting the background service so it picks them up..."
-        try {
-            $global:LASTEXITCODE = $null
-            & opencode service restart
-            if (($null -ne $LASTEXITCODE) -and ($LASTEXITCODE -eq 0)) {
-                Write-Ok "opencode service restarted with the new credentials."
-                Write-Info "Verifying MCP servers..."
+    # Background service restart (only when CLI is available)
+    if ($installType -eq "Terminal" -or $installType -eq "Both" -or (Get-Command opencode -ErrorAction SilentlyContinue)) {
+        if ($script:SavedSecrets) {
+            Write-Info "MCP secrets are set in this session - restarting the background service so it picks them up..."
+            try {
                 $global:LASTEXITCODE = $null
-                & opencode mcp list
-                if (($null -eq $LASTEXITCODE) -or ($LASTEXITCODE -ne 0)) {
-                    Write-Warn "Could not list MCP servers - run 'opencode mcp list' manually to verify."
+                & opencode service restart
+                if (($null -ne $LASTEXITCODE) -and ($LASTEXITCODE -eq 0)) {
+                    Write-Ok "opencode service restarted with the new credentials."
+                    Write-Info "Verifying MCP servers..."
+                    $global:LASTEXITCODE = $null
+                    & opencode mcp list
+                    if (($null -eq $LASTEXITCODE) -or ($LASTEXITCODE -ne 0)) {
+                        Write-Warn "Could not list MCP servers - run 'opencode mcp list' manually to verify."
+                    }
+                } else {
+                    Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
                 }
-            } else {
+            } catch {
                 Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
             }
-        } catch {
-            Write-Warn "Could not restart opencode service automatically. Run 'opencode service restart' manually, then 'opencode mcp list' to verify."
+            Write-Warn "This terminal still has the old env - open a new terminal so it picks up the new User environment."
+        } else {
+            Write-Info "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
         }
-        Write-Warn "This terminal still has the old env - open a new terminal so it picks up the new User environment."
-    } else {
-        Write-Info "If the opencode background service is running, restart it manually: opencode service restart ; then verify with: opencode mcp list"
     }
 
     Write-Host ""
-    Write-Ok "All done! Run 'opencode' to get started."
+    if ($installType -eq "Desktop") {
+        Write-Ok "All done! Open OpenCode Desktop to get started."
+    } else {
+        Write-Ok "All done! Run 'opencode' to get started."
+    }
     Write-Host ""
 
     if ($SkipStar -or $NonInteractive) {
