@@ -456,8 +456,42 @@ function Get-DesktopDownloadInfo {
     }
 }
 
+# Check if OpenCode Desktop is already installed on Windows
+function Find-DesktopApp {
+    $candidates = @()
+    if ($env:LOCALAPPDATA) {
+        $candidates += Join-Path -Path $env:LOCALAPPDATA -ChildPath "Programs\OpenCode\OpenCode.exe"
+        $candidates += Join-Path -Path $env:LOCALAPPDATA -ChildPath "OpenCode\OpenCode.exe"
+    }
+    if ($env:ProgramFiles) {
+        $candidates += Join-Path -Path $env:ProgramFiles -ChildPath "OpenCode\OpenCode.exe"
+    }
+    if (${env:ProgramFiles(x86)}) {
+        $candidates += Join-Path -Path ${env:ProgramFiles(x86)} -ChildPath "OpenCode\OpenCode.exe"
+    }
+
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path -Path $path -PathType Leaf)) {
+            return $path
+        }
+    }
+
+    $cmd = Get-Command opencode-desktop -ErrorAction SilentlyContinue
+    if ($cmd) {
+        return $cmd.Source
+    }
+
+    return $null
+}
+
 # Download and execute the OpenCode Desktop installer
 function Download-And-Install-Desktop {
+    $existingApp = Find-DesktopApp
+    if ($existingApp) {
+        Write-Ok "OpenCode Desktop is already installed ($existingApp). Skipping download."
+        return
+    }
+
     Write-Info "Resolving OpenCode Desktop download..."
     $info = Get-DesktopDownloadInfo
     $downloadUrl = $info.Url
@@ -577,11 +611,29 @@ function Main {
     }
 
     Write-Host ""
+    Write-Ok "★ OpenCode setup complete!"
+    Write-Host ""
+    Write-Host "Next steps:"
+    Write-Host ""
+    Write-Host "  1. Log in to the provider(s) you want to use:"
+    Write-Host "     > opencode auth login"
+    Write-Host ""
+    Write-Host "  2. Refresh the models OpenCode can see:"
+    Write-Host "     > opencode models"
+    Write-Host ""
+    Write-Host "  3. Review your deployed configuration:"
+    Write-Host "     $cfgDir\opencode.json"
+    Write-Host "     $cfgDir\oh-my-opencode-slim.json"
+    Write-Host ""
     if ($installType -eq "Desktop") {
-        Write-Ok "All done! Open OpenCode Desktop to get started."
+        Write-Host "  4. Open OpenCode Desktop to get started."
     } else {
-        Write-Ok "All done! Run 'opencode' to get started."
+        Write-Host "  4. Start OpenCode:"
+        Write-Host "     > opencode"
     }
+    Write-Host ""
+    Write-Host "  5. Verify MCP servers (optional):"
+    Write-Host "     > opencode mcp list"
     Write-Host ""
 
     if ($SkipStar -or $NonInteractive) {
@@ -589,8 +641,8 @@ function Main {
         Write-Host ""
         return
     }
-    try { $star = Read-Host "Star the repo on GitHub if you find it useful? [y/N]" } catch { $star = "" }
-    if ($star -match '^[yY]') {
+    try { $star = Read-Host "★ Star the repo on GitHub? [Y/n]" } catch { $star = "n" }
+    if ([string]::IsNullOrWhiteSpace($star) -or $star -match '^[yY]') {
         $starred = $false
         $gh = Get-Command gh -ErrorAction SilentlyContinue
         if ($gh) {
@@ -600,15 +652,14 @@ function Main {
                 $global:LASTEXITCODE = $null
                 gh api -X PUT "user/starred/HossamYoussof/opencode-config" --silent 2>$null
                 if (($null -ne $LASTEXITCODE) -and ($LASTEXITCODE -eq 0)) {
-                    Write-Ok "Starred the repo."
+                    Write-Ok "Thanks for starring! ★"
                     $starred = $true
                 }
             }
         }
         if (-not $starred) {
-            Write-Warn "Couldn't star automatically - open the repo and star it manually."
+            Write-Warn "Couldn't star automatically via gh CLI."
         }
-        Start-Process "https://github.com/HossamYoussof/opencode-config"
     }
     Write-Host ""
 }

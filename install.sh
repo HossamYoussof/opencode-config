@@ -627,9 +627,78 @@ except Exception:
   printf '%s %s\n' "$download_url" "$target_file"
 }
 
+# Locate an existing OpenCode Desktop installation for the current OS.
+# Prints the path if found and returns 0; otherwise returns 1.
+find_desktop_app() {
+  local os="$1"
+  case "$os" in
+    macos)
+      local app
+      for app in "/Applications/OpenCode.app" "$HOME/Applications/OpenCode.app"; do
+        if [[ -d "$app" ]]; then
+          printf '%s\n' "$app"
+          return 0
+        fi
+      done
+      ;;
+    linux)
+      if command -v opencode-desktop &>/dev/null; then
+        command -v opencode-desktop
+        return 0
+      fi
+      local bin
+      for bin in \
+        "/usr/bin/opencode-desktop" \
+        "/usr/local/bin/opencode-desktop" \
+        "/opt/OpenCode/opencode-desktop" \
+        "/opt/opencode-desktop/opencode-desktop" \
+        "$HOME/.local/bin/opencode-desktop"; do
+        if [[ -x "$bin" ]]; then
+          printf '%s\n' "$bin"
+          return 0
+        fi
+      done
+      local dir match
+      for dir in "$HOME/.local/bin" "$HOME/Applications" "$HOME/Downloads"; do
+        [[ -d "$dir" ]] || continue
+        for match in "$dir"/opencode-desktop*.AppImage "$dir"/OpenCode*.AppImage; do
+          if [[ -e "$match" ]]; then
+            printf '%s\n' "$match"
+            return 0
+          fi
+        done
+      done
+      ;;
+    windows)
+      local exe
+      local local_app="${LOCALAPPDATA:-}"
+      local prog_files="${PROGRAMFILES:-${ProgramFiles:-}}"
+      local prog_files_x86="${PROGRAMFILES_X86:-}"
+      for exe in \
+        "${local_app:+$local_app/Programs/OpenCode/OpenCode.exe}" \
+        "${local_app:+$local_app/OpenCode/OpenCode.exe}" \
+        "${prog_files:+$prog_files/OpenCode/OpenCode.exe}" \
+        "${prog_files_x86:+$prog_files_x86/OpenCode/OpenCode.exe}"; do
+        if [[ -n "$exe" && -f "$exe" ]]; then
+          printf '%s\n' "$exe"
+          return 0
+        fi
+      done
+      ;;
+  esac
+  return 1
+}
+
 # Download and launch the Desktop installer
 download_and_install_desktop() {
   local os="$1"
+
+  local existing_app
+  if existing_app="$(find_desktop_app "$os")"; then
+    ok "OpenCode Desktop is already installed (${existing_app}). Skipping download."
+    return 0
+  fi
+
   info "Resolving OpenCode Desktop download..."
 
   local info_str
@@ -908,11 +977,29 @@ main() {
   deploy_configs "$cfg_dir"
 
   echo ""
+  ok "★ OpenCode setup complete!"
+  echo ""
+  echo "Next steps:"
+  echo ""
+  echo "  1. Log in to the provider(s) you want to use:"
+  echo "     \$ opencode auth login"
+  echo ""
+  echo "  2. Refresh the models OpenCode can see:"
+  echo "     \$ opencode models"
+  echo ""
+  echo "  3. Review your deployed configuration:"
+  echo "     ${cfg_dir}/opencode.json"
+  echo "     ${cfg_dir}/oh-my-opencode-slim.json"
+  echo ""
   if [[ "$INSTALL_TYPE" == "desktop" ]]; then
-    ok "All done! Open OpenCode Desktop to get started."
+    echo "  4. Open OpenCode Desktop to get started."
   else
-    ok "All done! Run 'opencode' to get started."
+    echo "  4. Start OpenCode:"
+    echo "     \$ opencode"
   fi
+  echo ""
+  echo "  5. Verify MCP servers (optional):"
+  echo "     \$ opencode mcp list"
   echo ""
 
   print_path_next_steps
@@ -946,25 +1033,22 @@ main() {
   if [[ "$NON_INTERACTIVE" -eq 1 || ! -t 0 ]]; then
     info "Skipping star prompt (non-interactive)."
   else
-  read -r -p "Star the repo on GitHub if you find it useful? [y/N] " answer || true
-  case "${answer:-}" in
-    [yY]|[yY][eE][sS])
-      if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
-        if gh api -X PUT "user/starred/HossamYoussof/opencode-config" --silent; then
-          ok "Starred the repo."
+    read -r -p "★ Star the repo on GitHub? [Y/n] " answer || true
+    case "${answer:-Y}" in
+      [nN]|[nN][oO])
+        ;;
+      *)
+        if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+          if gh api -X PUT "user/starred/HossamYoussof/opencode-config" --silent; then
+            ok "Thanks for starring! ★"
+          else
+            warn "Couldn't star automatically via gh CLI."
+          fi
         else
-          warn "Couldn't star automatically — open the repo and star it manually."
+          warn "gh CLI not found or not signed in — couldn't star automatically."
         fi
-      else
-        warn "gh CLI not found or not signed in — open the repo and star it manually."
-      fi
-      case "$os" in
-        macos)  open "https://github.com/HossamYoussof/opencode-config" ;;
-        linux)  xdg-open "https://github.com/HossamYoussof/opencode-config" 2>/dev/null || true ;;
-        windows) cmd.exe /c start "" "https://github.com/HossamYoussof/opencode-config" 2>/dev/null || true ;;
-      esac
-      ;;
-  esac
+        ;;
+    esac
   fi
   echo ""
 }
