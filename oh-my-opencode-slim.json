@@ -258,6 +258,188 @@
         "variant": "high",
         "skills": []
       }
+    },
+    "sovereigneg": {
+      "orchestrator": {
+        "model": [
+          {
+            "id": "sovereigneg/claude-opus-4.8",
+            "variant": "high"
+          },
+          {
+            "id": "sovereigneg/qwen3.8-max",
+            "variant": "high"
+          },
+          "sovereigneg/SovereignEG/Qwen3.8-27B-FP8",
+          {
+            "id": "sovereigneg/claude-sonnet-4.6",
+            "variant": "high"
+          }
+        ],
+        "variant": "high",
+        "skills": [
+          "*"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ],
+        "displayName": "Orchestrator",
+        "color": "primary",
+        "description": "Primary delegation agent with full skill access - SovereignEG Claude Opus 4.8 & Qwen3.8 Max"
+      },
+      "oracle": {
+        "model": [
+          {
+            "id": "sovereigneg/claude-opus-4.8",
+            "variant": "max"
+          },
+          {
+            "id": "sovereigneg/deepseek-v3.1-terminus",
+            "variant": "high"
+          },
+          {
+            "id": "sovereigneg/beam-1.0-501b-a23b",
+            "variant": "high"
+          },
+          "sovereigneg/qwen4-max"
+        ],
+        "variant": "max",
+        "skills": [
+          "simplify"
+        ],
+        "mcps": [],
+        "displayName": "Oracle",
+        "color": "accent",
+        "description": "Deep reasoning and architectural decisions - SovereignEG Claude Opus 4.8 & DeepSeek V3.1 Terminus"
+      },
+      "council": {
+        "model": [
+          {
+            "id": "sovereigneg/qwen3.8-max",
+            "variant": "high"
+          },
+          {
+            "id": "sovereigneg/claude-opus-4.8",
+            "variant": "high"
+          },
+          "sovereigneg/SovereignEG/Qwen3.8-27B-FP8",
+          "sovereigneg/beam-1.0-501b-a23b"
+        ],
+        "variant": "high",
+        "skills": [],
+        "mcps": [],
+        "displayName": "Council",
+        "color": "accent",
+        "description": "Multi-perspective deliberation - SovereignEG Qwen3.8 Max & Claude Opus 4.8"
+      },
+      "librarian": {
+        "model": [
+          {
+            "id": "sovereigneg/claude-haiku-4.5",
+            "variant": "low"
+          },
+          {
+            "id": "sovereigneg/deepseek-v4.1-flash",
+            "variant": "low"
+          },
+          {
+            "id": "sovereigneg/qwen3.8-flash",
+            "variant": "low"
+          }
+        ],
+        "variant": "low",
+        "skills": [],
+        "mcps": [
+          "websearch",
+          "context7",
+          "gh_grep"
+        ],
+        "displayName": "Librarian",
+        "color": "info",
+        "description": "Research and documentation lookup - SovereignEG Claude Haiku 4.5 & DeepSeek V4.1 Flash"
+      },
+      "explorer": {
+        "model": [
+          {
+            "id": "sovereigneg/deepseek-v4.1-flash",
+            "variant": "low"
+          },
+          {
+            "id": "sovereigneg/qwen3.8-flash",
+            "variant": "low"
+          },
+          {
+            "id": "sovereigneg/claude-haiku-4.5",
+            "variant": "low"
+          }
+        ],
+        "variant": "low",
+        "skills": [],
+        "mcps": [],
+        "displayName": "Explorer",
+        "color": "success",
+        "description": "Codebase exploration and search - SovereignEG DeepSeek V4.1 Flash & Qwen3.8 Flash"
+      },
+      "designer": {
+        "model": [
+          {
+            "id": "sovereigneg/claude-sonnet-4.6",
+            "variant": "medium"
+          },
+          "sovereigneg/qwen3-coder-30b-a3b-instruct",
+          "sovereigneg/SovereignEG/Qwen3.8-27B-FP8"
+        ],
+        "variant": "medium",
+        "skills": [
+          "agent-browser"
+        ],
+        "mcps": [],
+        "displayName": "Designer",
+        "color": "warning",
+        "description": "UI/UX design and visual implementation - SovereignEG Claude Sonnet 4.6"
+      },
+      "fixer": {
+        "model": [
+          {
+            "id": "sovereigneg/qwen3-coder-30b-a3b-instruct",
+            "variant": "high"
+          },
+          {
+            "id": "sovereigneg/claude-sonnet-4.6",
+            "variant": "high"
+          },
+          {
+            "id": "sovereigneg/deepseek-v4.1-flash",
+            "variant": "high"
+          }
+        ],
+        "variant": "high",
+        "skills": [],
+        "mcps": [],
+        "displayName": "Fixer",
+        "color": "error",
+        "description": "Bug fixes and implementation tasks - SovereignEG Qwen3 Coder 30B & Claude Sonnet 4.6"
+      },
+      "observer": {
+        "model": [
+          {
+            "id": "sovereigneg/claude-sonnet-4.6",
+            "variant": "low"
+          },
+          {
+            "id": "sovereigneg/gemini-3.6-flash",
+            "variant": "low"
+          },
+          "sovereigneg/qwen3-vl-235b-a22b-instruct"
+        ],
+        "variant": "low",
+        "skills": [],
+        "mcps": [],
+        "displayName": "Observer",
+        "color": "secondary",
+        "description": "Image analysis and vision tasks - SovereignEG Claude Sonnet 4.6 & Gemini 3.6 Flash"
+      }
     }
   }
 }

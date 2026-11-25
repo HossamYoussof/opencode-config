@@ -86,5 +86,1681 @@
     "opencode-mem@latest",
     "@tarquinen/opencode-dcp@latest",
     "oh-my-opencode-slim@latest"
-  ]
+  ],
+  "provider": {
+    "sovereigneg": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "SovereignEG",
+      "options": {
+        "baseURL": "https://backend.sovereigneg.com/v1",
+        "apiKey": "{env:SOVEREIGNEG_API_KEY}"
+      },
+      "models": {
+        "SovereignEG/Qwen3.8-27B-FP8": {
+          "name": "Qwen3.8-27B-FP8",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "SovereignEG/embeddinggemma-300m": {
+          "name": "embeddinggemma-300m",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "all-minilm-l12-v2": {
+          "name": "all-minilm-l12-v2",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "all-minilm-l6-v2": {
+          "name": "all-minilm-l6-v2",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "all-mpnet-base-v2": {
+          "name": "all-mpnet-base-v2",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "beam-1.0-501b-a23b": {
+          "name": "Beam 1.0 501B A23B",
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          },
+          "reasoning": true
+        },
+        "bge-base-en-v1.5": {
+          "name": "bge-base-en-v1.5",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "bge-en-icl": {
+          "name": "bge-en-icl",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "bge-large-en-v1.5": {
+          "name": "bge-large-en-v1.5",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "bge-m3": {
+          "name": "bge-m3",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "bge-m3-multi": {
+          "name": "bge-m3-multi",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "bge-m3-multi-8k": {
+          "name": "bge-m3-multi-8k",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "bria-3.2": {
+          "name": "bria-3.2",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "bria-3.2-vector": {
+          "name": "bria-3.2-vector",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "claude-fable-5": {
+          "name": "claude-fable-5",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-fable-5.1": {
+          "name": "Claude Fable 5.1",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "claude-fable-5.2": {
+          "name": "Claude Fable 5.2",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "claude-haiku-4.5": {
+          "name": "claude-haiku-4.5",
+          "limit": {
+            "context": 200000,
+            "output": 16384
+          }
+        },
+        "claude-haiku-5.5": {
+          "name": "Claude Haiku 5.5",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "claude-opus-4.5": {
+          "name": "Claude Opus 4.5",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        },
+        "claude-opus-4.6": {
+          "name": "Claude Opus 4.6",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          }
+        },
+        "claude-opus-4.7": {
+          "name": "claude-opus-4.7",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-opus-4.8": {
+          "name": "claude-opus-4.8",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-opus-5": {
+          "name": "Claude Opus 5",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-opus-5.5": {
+          "name": "Claude Opus 5.5",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-sonnet-4.5": {
+          "name": "Claude Sonnet 4.5",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        },
+        "claude-sonnet-4.6": {
+          "name": "claude-sonnet-4.6",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-sonnet-5": {
+          "name": "claude-sonnet-5",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "claude-sonnet-5.5": {
+          "name": "Claude Sonnet 5.5",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "clip-vit-b-32": {
+          "name": "clip-vit-b-32",
+          "limit": {
+            "context": 77,
+            "output": 512
+          }
+        },
+        "clip-vit-b-32-multilingual-v1": {
+          "name": "clip-vit-b-32-multilingual-v1",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "daisyrose-27b": {
+          "name": "daisyrose-27b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "deepseek-chat-v3-0324": {
+          "name": "DeepSeek: DeepSeek V3 0324",
+          "limit": {
+            "context": 163840,
+            "output": 147456
+          }
+        },
+        "deepseek-chat-v3.1": {
+          "name": "DeepSeek: DeepSeek V3.1",
+          "limit": {
+            "context": 163840,
+            "output": 147456
+          }
+        },
+        "deepseek-r1-0528": {
+          "name": "deepseek-r1-0528",
+          "limit": {
+            "context": 163840,
+            "output": 16384
+          },
+          "reasoning": true
+        },
+        "deepseek-v3": {
+          "name": "deepseek-v3",
+          "limit": {
+            "context": 163840,
+            "output": 16384
+          }
+        },
+        "deepseek-v3.1": {
+          "name": "deepseek-v3.1",
+          "limit": {
+            "context": 163840,
+            "output": 16384
+          }
+        },
+        "deepseek-v3.1-terminus": {
+          "name": "deepseek-v3.1-terminus",
+          "limit": {
+            "context": 163840,
+            "output": 147456
+          },
+          "reasoning": true
+        },
+        "deepseek-v3.2": {
+          "name": "deepseek-v3.2",
+          "limit": {
+            "context": 163840,
+            "output": 16384
+          }
+        },
+        "deepseek-v4-flash": {
+          "name": "deepseek-v4-flash",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "deepseek-v4-flash-0731": {
+          "name": "DeepSeek: DeepSeek V4 Flash 0731",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "deepseek-v4-flash-vision-exp": {
+          "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          },
+          "attachment": true
+        },
+        "deepseek-v4-pro": {
+          "name": "deepseek-v4-pro",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "deepseek-v4-pro-0813": {
+          "name": "DeepSeek: DeepSeek V4 Pro 0813",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "deepseek-v4.1-flash": {
+          "name": "deepseek-v4.1-flash",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "deepseek-v4.1-flash-1017": {
+          "name": "deepseek-v4.1-flash-1017",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "e5-base-v2": {
+          "name": "e5-base-v2",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "e5-large-v2": {
+          "name": "e5-large-v2",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "fibo-2.0": {
+          "name": "fibo-2.0",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-1-dev": {
+          "name": "flux-1-dev",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-1-schnell": {
+          "name": "flux-1-schnell",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-1.1-pro": {
+          "name": "flux-1.1-pro",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-2-dev": {
+          "name": "flux-2-dev",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-2-klein-4b": {
+          "name": "flux-2-klein-4b",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-2-klein-9b": {
+          "name": "flux-2-klein-9b",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-2-max": {
+          "name": "flux-2-max",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "flux-2-pro": {
+          "name": "flux-2-pro",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "gemini-2.5-flash": {
+          "name": "gemini-2.5-flash",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "gemini-2.5-pro": {
+          "name": "gemini-2.5-pro",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "gemini-3-pro-image": {
+          "name": "gemini-3-pro-image",
+          "limit": {
+            "context": 65536,
+            "output": 32768
+          }
+        },
+        "gemini-3.1-flash-lite": {
+          "name": "gemini-3.1-flash-lite",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "gemini-3.1-pro": {
+          "name": "gemini-3.1-pro",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "gemini-3.5-flash": {
+          "name": "gemini-3.5-flash",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "gemini-3.6-flash": {
+          "name": "Google: Gemini 3.6 Flash",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "gemini-3.7-flash": {
+          "name": "Google: Gemini 3.7 Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "gemini-3.8-flash": {
+          "name": "Google: Gemini 3.8 Flash",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          }
+        },
+        "gemini-4-argon": {
+          "name": "Google: Gemini 4 Argon",
+          "limit": {
+            "context": 1048576,
+            "output": 943718
+          }
+        },
+        "gemini-4-carbon": {
+          "name": "Google: Gemini 4 Carbon",
+          "limit": {
+            "context": 1048576,
+            "output": 943718
+          }
+        },
+        "gemma-2-27b-it": {
+          "name": "Gemma-2 Instruct (27B)",
+          "limit": {
+            "context": 8192,
+            "output": 2048
+          }
+        },
+        "gemma-3-12b-it": {
+          "name": "gemma-3-12b-it",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "gemma-3-27b-it": {
+          "name": "gemma-3-27b-it",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "gemma-3-4b-it": {
+          "name": "gemma-3-4b-it",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "gemma-4-26b-a4b-it": {
+          "name": "gemma-4-26b-a4b-it",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "gemma-4-31b-it": {
+          "name": "gemma-4-31b-it",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "gemma-4-31b-it-turbo": {
+          "name": "gemma-4-31b-it-turbo",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "gemma-4-31b-it-ultra": {
+          "name": "gemma-4-31b-it-ultra",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "glimpse-1.0": {
+          "name": "Elorian Glimpse 1.0",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "glm-4.5v": {
+          "name": "GLM 4.5V",
+          "limit": {
+            "context": 65536,
+            "output": 16384
+          }
+        },
+        "glm-4.6": {
+          "name": "glm-4.6",
+          "limit": {
+            "context": 202752,
+            "output": 16384
+          }
+        },
+        "glm-4.7": {
+          "name": "glm-4.7",
+          "limit": {
+            "context": 202752,
+            "output": 16384
+          }
+        },
+        "glm-4.7-flash": {
+          "name": "glm-4.7-flash",
+          "limit": {
+            "context": 131072,
+            "output": 117964
+          }
+        },
+        "glm-5": {
+          "name": "glm-5",
+          "limit": {
+            "context": 202752,
+            "output": 131072
+          }
+        },
+        "glm-5.1": {
+          "name": "glm-5.1",
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          }
+        },
+        "glm-5.2": {
+          "name": "glm-5.2",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "glm-5.3": {
+          "name": "Z.ai: GLM 5.3",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "glm-5.3-flash": {
+          "name": "glm-5.3-flash",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "glm-5.3-flashx": {
+          "name": "Z.ai: GLM 5.3 FlashX",
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          }
+        },
+        "gpt-3.5-turbo-16k": {
+          "name": "gpt-3.5-turbo-16k",
+          "limit": {
+            "context": 16385,
+            "output": 4096
+          }
+        },
+        "gpt-4": {
+          "name": "gpt-4",
+          "limit": {
+            "context": 8191,
+            "output": 4096
+          }
+        },
+        "gpt-4.1": {
+          "name": "gpt-4.1",
+          "limit": {
+            "context": 1047576,
+            "output": 32768
+          }
+        },
+        "gpt-4.1-mini": {
+          "name": "gpt-4.1-mini",
+          "limit": {
+            "context": 1047576,
+            "output": 32768
+          }
+        },
+        "gpt-4o": {
+          "name": "gpt-4o",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gpt-4o-2024-05-13": {
+          "name": "gpt-4o-2024-05-13",
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          }
+        },
+        "gpt-4o-2024-08-06": {
+          "name": "gpt-4o-2024-08-06",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gpt-4o-2024-11-20": {
+          "name": "gpt-4o-2024-11-20",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gpt-4o-mini": {
+          "name": "gpt-4o-mini",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gpt-4o-mini-2024-07-18": {
+          "name": "gpt-4o-mini-2024-07-18",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "gpt-5": {
+          "name": "gpt-5",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5-mini": {
+          "name": "gpt-5-mini",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5-nano": {
+          "name": "gpt-5-nano",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5.1": {
+          "name": "gpt-5.1",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5.2": {
+          "name": "gpt-5.2",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5.4": {
+          "name": "gpt-5.4",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-5.4-mini": {
+          "name": "gpt-5.4-mini",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5.4-nano": {
+          "name": "gpt-5.4-nano",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          }
+        },
+        "gpt-5.5": {
+          "name": "gpt-5.5",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-5.6-luna": {
+          "name": "gpt-5.6-luna",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-5.6-sol": {
+          "name": "gpt-5.6-sol",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-5.6-terra": {
+          "name": "gpt-5.6-terra",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6-astra": {
+          "name": "gpt-6-astra",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6-luna": {
+          "name": "gpt-6-luna",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6-luna-decisions": {
+          "name": "OpenAI: GPT-6 Luna Decisions",
+          "limit": {
+            "context": 1050000,
+            "output": 945000
+          }
+        },
+        "gpt-6-sol": {
+          "name": "gpt-6-sol",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6.1-sol": {
+          "name": "gpt-6.1-sol",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6.1-terra": {
+          "name": "OpenAI: GPT-6.1 Terra",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6.2-astra": {
+          "name": "gpt-6.2-astra",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-6.2-sol": {
+          "name": "gpt-6.2-sol",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          }
+        },
+        "gpt-oss-120b": {
+          "name": "gpt-oss-120b",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "gpt-oss-20b": {
+          "name": "gpt-oss-20b",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "granite-4.2-8b": {
+          "name": "granite-4.2-8b",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "grok-4.5": {
+          "name": "xAI: Grok 4.5",
+          "limit": {
+            "context": 500000,
+            "output": 450000
+          }
+        },
+        "grok-4.6": {
+          "name": "SpaceXAI: Grok 4.6",
+          "limit": {
+            "context": 500000,
+            "output": 450000
+          }
+        },
+        "grok-4.7": {
+          "name": "SpaceXAI: Grok 4.7",
+          "limit": {
+            "context": 500000,
+            "output": 450000
+          }
+        },
+        "gte-base": {
+          "name": "gte-base",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "gte-large": {
+          "name": "gte-large",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "hy3": {
+          "name": "hy3",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "hy4-preview": {
+          "name": "Tencent: Hy4 preview",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "inkling": {
+          "name": "Inkling FP4",
+          "limit": {
+            "context": 524288,
+            "output": 471859
+          }
+        },
+        "inkling-2-small": {
+          "name": "Inkling 2 Small",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "inkling-small": {
+          "name": "Thinking Machines: Inkling Small",
+          "limit": {
+            "context": 524288,
+            "output": 16384
+          }
+        },
+        "jev-1.13": {
+          "name": "TypeSafe: Jev 1.13",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "kev-4b": {
+          "name": "Jared Palmer: Kev 4B",
+          "limit": {
+            "context": 8192,
+            "output": 7372
+          }
+        },
+        "kimi-k2": {
+          "name": "MoonshotAI: Kimi K2 0711",
+          "limit": {
+            "context": 131072,
+            "output": 98304
+          }
+        },
+        "kimi-k2-0905": {
+          "name": "MoonshotAI: Kimi K2 0905",
+          "limit": {
+            "context": 262144,
+            "output": 98304
+          }
+        },
+        "kimi-k2.5": {
+          "name": "kimi-k2.5",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "kimi-k2.6": {
+          "name": "kimi-k2.6",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "kimi-k2.7-code": {
+          "name": "kimi-k2.7-code",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "kimi-k3": {
+          "name": "MoonshotAI: Kimi K3",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "kimi-k3.1-pro": {
+          "name": "MoonshotAI: Kimi K3.1 Pro",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "ling-3.0-flash": {
+          "name": "Ling-3.0-flash",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "ling-3.0-flash-vl": {
+          "name": "ling-3.0-flash-vl",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          },
+          "attachment": true
+        },
+        "llama-3.1-70b-instruct": {
+          "name": "nim/meta/llama-3.1-70b-instruct",
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          }
+        },
+        "llama-3.1-8b-instruct": {
+          "name": "nim/meta/llama-3.1-8b-instruct",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "llama-3.2-3b-instruct": {
+          "name": "Meta Llama 3.2 3B Instruct",
+          "limit": {
+            "context": 131072,
+            "output": 117964
+          }
+        },
+        "llama-3.3-70b-instruct": {
+          "name": "nim/meta/llama-3.3-70b-instruct",
+          "limit": {
+            "context": 128000,
+            "output": 115200
+          }
+        },
+        "llama-3.3-70b-instruct-turbo": {
+          "name": "llama-3.3-70b-instruct-turbo",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "llama-4-scout-17b-16e-instruct": {
+          "name": "llama-4-scout-17b-16e-instruct",
+          "limit": {
+            "context": 327680,
+            "output": 16384
+          }
+        },
+        "llama-guard-4-12b": {
+          "name": "llama-guard-4-12b",
+          "limit": {
+            "context": 163840,
+            "output": 16384
+          }
+        },
+        "llama-nemotron-embed-vl-1b-v2": {
+          "name": "llama-nemotron-embed-vl-1b-v2",
+          "limit": {
+            "context": 10240,
+            "output": 512
+          },
+          "attachment": true
+        },
+        "meta-llama-3.1-8b-instruct-turbo": {
+          "name": "meta-llama-3.1-8b-instruct-turbo",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "mimo-v2.5": {
+          "name": "mimo-v2.5",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "mimo-v2.5-pro": {
+          "name": "mimo-v2.5-pro",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "mimo-v2.6-flash": {
+          "name": "Xiaomi: MiMo-V2.6-Flash",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "mimo-v2.6-pro": {
+          "name": "Xiaomi: MiMo-V2.6-Pro",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "minimax-m2.7": {
+          "name": "minimax-m2.7",
+          "limit": {
+            "context": 196608,
+            "output": 131072
+          }
+        },
+        "minimax-m3": {
+          "name": "minimax-m3",
+          "limit": {
+            "context": 524288,
+            "output": 16384
+          }
+        },
+        "minimax-m3.1-flash": {
+          "name": "MiniMax: MiniMax M3.1 Flash",
+          "limit": {
+            "context": 1048576,
+            "output": 512000
+          }
+        },
+        "mistral-nemo-instruct-2407": {
+          "name": "mistral-nemo-instruct-2407",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "mistral-small-24b-instruct-2501": {
+          "name": "mistral-small-24b-instruct-2501",
+          "limit": {
+            "context": 32768,
+            "output": 16384
+          }
+        },
+        "mistral-small-3.2-24b-instruct-2506": {
+          "name": "mistral-small-3.2-24b-instruct-2506",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          }
+        },
+        "multi-qa-mpnet-base-dot-v1": {
+          "name": "multi-qa-mpnet-base-dot-v1",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "multilingual-e5-large": {
+          "name": "multilingual-e5-large",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "multilingual-e5-large-instruct": {
+          "name": "multilingual-e5-large-instruct",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "muse-glimmer-30b": {
+          "name": "Muse Glimmer 30B",
+          "limit": {
+            "context": 131072,
+            "output": 117964
+          }
+        },
+        "muse-spark-open-816b-a42b": {
+          "name": "Muse Spark Open 816B A42B",
+          "limit": {
+            "context": 1048576,
+            "output": 16384
+          }
+        },
+        "muse-wonder": {
+          "name": "Meta: Muse Wonder",
+          "limit": {
+            "context": 1048576,
+            "output": 943718
+          }
+        },
+        "nano-banana-2": {
+          "name": "nano-banana-2",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "nano-banana-2-lite": {
+          "name": "nano-banana-2-lite",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "nano-banana-pro": {
+          "name": "nano-banana-pro",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "nemotron-3-nano-30b-a3b": {
+          "name": "nemotron-3-nano-30b-a3b",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "nemotron-3-ultra-550b-a55b": {
+          "name": "NVIDIA Nemotron 3 Ultra 550B A55B NVFP4",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "nemotron-content-safety-3.5": {
+          "name": "nemotron-content-safety-3.5",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "nvidia-nemotron-3-super-120b-a12b": {
+          "name": "nvidia-nemotron-3-super-120b-a12b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "nvidia-nemotron-3-ultra-550b-a55b": {
+          "name": "nvidia-nemotron-3-ultra-550b-a55b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "nvidia-nemotron-3.5-lightning": {
+          "name": "nvidia-nemotron-3.5-lightning",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "nvidia-nemotron-3.5-super-vl": {
+          "name": "NVIDIA Nemotron 3.5 Super VL",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          },
+          "attachment": true
+        },
+        "o3": {
+          "name": "o3",
+          "limit": {
+            "context": 200000,
+            "output": 100000
+          }
+        },
+        "p-image": {
+          "name": "p-image",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "paraphrase-minilm-l6-v2": {
+          "name": "paraphrase-minilm-l6-v2",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "phi-4": {
+          "name": "phi-4",
+          "limit": {
+            "context": 16384,
+            "output": 14745
+          }
+        },
+        "qwen-2-1.5b-instruct": {
+          "name": "Arize AI Qwen 2 1.5B Instruct",
+          "limit": {
+            "context": 32768,
+            "output": 16384
+          }
+        },
+        "qwen-image-max": {
+          "name": "qwen-image-max",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "qwen2.5-vl-72b-instruct": {
+          "name": "Qwen2.5-VL (72B) Instruct",
+          "limit": {
+            "context": 128000,
+            "output": 115200
+          },
+          "attachment": true
+        },
+        "qwen3-14b": {
+          "name": "qwen3-14b",
+          "limit": {
+            "context": 40960,
+            "output": 16384
+          }
+        },
+        "qwen3-235b-a22b-instruct-2507": {
+          "name": "qwen3-235b-a22b-instruct-2507",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3-235b-a22b-thinking-2507": {
+          "name": "qwen3-235b-a22b-thinking-2507",
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          },
+          "reasoning": true
+        },
+        "qwen3-30b-a3b": {
+          "name": "qwen3-30b-a3b",
+          "limit": {
+            "context": 40960,
+            "output": 16384
+          }
+        },
+        "qwen3-32b": {
+          "name": "qwen3-32b",
+          "limit": {
+            "context": 40960,
+            "output": 16384
+          }
+        },
+        "qwen3-coder-30b-a3b-instruct": {
+          "name": "Qwen3 Coder 30B A3b Instruct",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "qwen3-coder-flash": {
+          "name": "Qwen: Qwen3 Coder Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "qwen3-coder-next": {
+          "name": "Qwen: Qwen3 Coder Next",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        },
+        "qwen3-embedding-0.6b": {
+          "name": "qwen3-embedding-0.6b",
+          "limit": {
+            "context": 32768,
+            "output": 512
+          }
+        },
+        "qwen3-embedding-4b": {
+          "name": "qwen3-embedding-4b",
+          "limit": {
+            "context": 32768,
+            "output": 512
+          }
+        },
+        "qwen3-embedding-8b": {
+          "name": "qwen3-embedding-8b",
+          "limit": {
+            "context": 32768,
+            "output": 512
+          }
+        },
+        "qwen3-next-80b-a3b-instruct": {
+          "name": "qwen3-next-80b-a3b-instruct",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3-reranker-8b": {
+          "name": "Qwen3 Reranker 8B",
+          "limit": {
+            "context": 32768,
+            "output": 4096
+          }
+        },
+        "qwen3-vl-235b-a22b-instruct": {
+          "name": "qwen3-vl-235b-a22b-instruct",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          },
+          "attachment": true
+        },
+        "qwen3-vl-30b-a3b-instruct": {
+          "name": "qwen3-vl-30b-a3b-instruct",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          },
+          "attachment": true
+        },
+        "qwen3-vl-8b-instruct": {
+          "name": "Qwen3-VL-8B-Instruct",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          },
+          "attachment": true
+        },
+        "qwen3.5-122b-a10b": {
+          "name": "qwen3.5-122b-a10b",
+          "limit": {
+            "context": 262144,
+            "output": 65536
+          }
+        },
+        "qwen3.5-27b": {
+          "name": "qwen3.5-27b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.5-35b-a3b": {
+          "name": "qwen3.5-35b-a3b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.5-397b-a17b": {
+          "name": "qwen3.5-397b-a17b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.5-9b": {
+          "name": "qwen3.5-9b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.5-flash-02-23": {
+          "name": "Qwen: Qwen3.5-Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "qwen3.5-plus-02-15": {
+          "name": "Qwen: Qwen3.5 Plus 2026-02-15",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "qwen3.5-plus-20260420": {
+          "name": "Qwen: Qwen3.5 Plus 2026-04-20",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "qwen3.6-27b": {
+          "name": "qwen3.6-27b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.6-35b-a3b": {
+          "name": "qwen3.6-35b-a3b",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.6-flash": {
+          "name": "Qwen: Qwen3.6 Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "qwen3.7-flash": {
+          "name": "Qwen: Qwen3.7 Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          }
+        },
+        "qwen3.7-plus": {
+          "name": "Qwen3.7 Plus",
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          }
+        },
+        "qwen3.8-2.4t-a95b": {
+          "name": "qwen3.8-2.4t-a95b",
+          "limit": {
+            "context": 262144,
+            "output": 65536
+          }
+        },
+        "qwen3.8-27b": {
+          "name": "Qwen: Qwen3.8 27B",
+          "limit": {
+            "context": 262144,
+            "output": 16384
+          }
+        },
+        "qwen3.8-flash": {
+          "name": "Qwen: Qwen3.8 Flash",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "qwen3.8-max": {
+          "name": "Qwen: Qwen3.8 Max",
+          "limit": {
+            "context": 256000,
+            "output": 16384
+          }
+        },
+        "qwen4-max": {
+          "name": "qwen4-max",
+          "limit": {
+            "context": 1000000,
+            "output": 16384
+          }
+        },
+        "rerank-4-fast": {
+          "name": "Cohere: Rerank 4 Fast",
+          "limit": {
+            "context": 32768,
+            "output": 29491
+          }
+        },
+        "rerank-4-pro": {
+          "name": "Cohere: Rerank 4 Pro",
+          "limit": {
+            "context": 32768,
+            "output": 29491
+          }
+        },
+        "rerank-v3.5": {
+          "name": "Cohere: Rerank v3.5",
+          "limit": {
+            "context": 4096,
+            "output": 3686
+          }
+        },
+        "ripple-65b-preview": {
+          "name": "Ripple 65B Preview",
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          }
+        },
+        "sdxl-turbo": {
+          "name": "sdxl-turbo",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "seed-1.8": {
+          "name": "seed-1.8",
+          "limit": {
+            "context": 256000,
+            "output": 16384
+          }
+        },
+        "seed-2.0-code": {
+          "name": "seed-2.0-code",
+          "limit": {
+            "context": 256000,
+            "output": 16384
+          }
+        },
+        "seed-2.0-mini": {
+          "name": "seed-2.0-mini",
+          "limit": {
+            "context": 256000,
+            "output": 16384
+          }
+        },
+        "seed-2.0-pro": {
+          "name": "seed-2.0-pro",
+          "limit": {
+            "context": 256000,
+            "output": 16384
+          }
+        },
+        "seedream-4": {
+          "name": "seedream-4",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "seedream-4.5": {
+          "name": "seedream-4.5",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "seedream-5.0-pro": {
+          "name": "seedream-5.0-pro",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        },
+        "step-3.7-flash": {
+          "name": "step-3.7-flash",
+          "limit": {
+            "context": 256000,
+            "output": 230400
+          }
+        },
+        "text-embedding-3-large": {
+          "name": "text-embedding-3-large",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "text-embedding-3-small": {
+          "name": "text-embedding-3-small",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "text-embedding-ada-002": {
+          "name": "text-embedding-ada-002",
+          "limit": {
+            "context": 8192,
+            "output": 512
+          }
+        },
+        "text2vec-base-chinese": {
+          "name": "text2vec-base-chinese",
+          "limit": {
+            "context": 512,
+            "output": 512
+          }
+        },
+        "voxtral-small-24b-2507": {
+          "name": "voxtral-small-24b-2507",
+          "limit": {
+            "context": 32768,
+            "output": 26214
+          }
+        },
+        "wan2.6-t2i": {
+          "name": "wan2.6-t2i",
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          }
+        }
+      }
+    }
+  }
 }
