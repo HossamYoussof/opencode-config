@@ -15,13 +15,6 @@
 .PARAMETER GithubPat
     Optional GitHub PAT (SecureString preferred, plain string accepted).
     Falls back to $env:GITHUB_PAT when omitted.
-.PARAMETER JenkinsUrl
-    Optional Jenkins MCP URL (must look like http(s)://...).
-    Falls back to $env:JENKINS_URL when omitted.
-.PARAMETER JenkinsAuth
-    Optional Jenkins Basic auth value (SecureString preferred, plain string
-    accepted, WITHOUT the 'Basic ' prefix - prefix is stripped if present).
-    Falls back to $env:JENKINS_BASIC_AUTH (or $env:JENKINS_AUTH) when omitted.
 .PARAMETER NonInteractive
     Skip all interactive prompts (credentials + star). Param/env values are
     still honored; missing values are skipped with an info message.
@@ -33,8 +26,6 @@
     .\install.ps1 -Type Desktop
 .EXAMPLE
     .\install.ps1 -Both
-.EXAMPLE
-    .\install.ps1 -JenkinsUrl "https://jenkins.example.com/mcp-server/mcp" -NonInteractive
 #>
 
 #Requires -Version 5.1
@@ -45,8 +36,6 @@ param(
     [Parameter()][switch]$Desktop,
     [Parameter()][switch]$Both,
     [Parameter()][object]$GithubPat = $null,
-    [Parameter()][string]$JenkinsUrl = "",
-    [Parameter()][object]$JenkinsAuth = $null,
     [Parameter()][switch]$NonInteractive,
     [Parameter()][switch]$SkipStar
 )
@@ -319,7 +308,7 @@ function Convert-SecureStringToPlainText {
     }
 }
 
-# Normalize a -GithubPat/-JenkinsAuth argument that may be a SecureString or
+# Normalize a -GithubPat argument that may be a SecureString or
 # a plain string. Returns plaintext the caller must clear ASAP. Never logs it.
 function ConvertTo-PlainSecret {
     param([object]$Secret)
@@ -332,101 +321,30 @@ function ConvertTo-PlainSecret {
     return [string]$Secret
 }
 
-# Single place for trim + 'Basic ' prefix stripping (auth values are stored
-# WITHOUT the prefix). Returns "" for null/empty.
-function Normalize-BasicAuthValue {
-    param([string]$Value)
-
-    if ($null -eq $Value) { return "" }
-    $trimmed = $Value.Trim()
-    if ([string]::IsNullOrWhiteSpace($trimmed)) { return "" }
-    if ($trimmed -imatch '^\s*Basic\s+(.+)$') {
-        $trimmed = $Matches[1].Trim()
-    } elseif ($trimmed -ieq 'Basic') {
-        # Bare "Basic" with no credentials is not a valid auth value.
-        return ""
-    }
-    return $trimmed
-}
-
-# Jenkins URL sanity check (non-empty http(s) URL). Not a reachability test.
-function Test-HttpUrl {
-    param([string]$Url)
-
-    if ([string]::IsNullOrWhiteSpace($Url)) { return $false }
-    return ($Url.Trim() -match '^https?://\S')
-}
-
-# Prompt for optional credentials and stage a customized opencode.json.
+# Prompt for optional credentials and return opencode.json path.
 # All prompts are optional (Enter to skip). Never aborts the install.
 # Secrets go to User env only; the JSON keeps {env:...} placeholders.
 function Get-CustomizedOpencodeJson {
     param(
         [string]$SrcPath,
         [object]$GithubPatParam = $null,
-        [string]$JenkinsUrlParam = "",
-        [object]$JenkinsAuthParam = $null,
         [switch]$NonInteractive
     )
 
     if (-not (Test-Path -Path $SrcPath)) { return $SrcPath }
 
-    $staging = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath ("opencode.staged." + $PID + ".json")
-    $keepStaging = $false
-    # Plaintext secrets: cleared in finally + right after saving. Never logged.
+    # Plaintext secret: cleared in finally + right after saving. Never logged.
     $githubPat = ""
-    $jenkinsUrl = ""
-    $jenkinsAuth = ""
     try {
-        Copy-Item -Path $SrcPath -Destination $staging -Force
-
-        # Parse ONCE; reuse for the prompt default and the patch below.
-        try {
-            $json = Get-Content -Path $staging -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        } catch {
-            Write-Warn "Could not parse opencode.json; deploying it unmodified."
-            return $SrcPath
-        }
-
-        # Current Jenkins URL default (shown in the prompt).
-        $defaultJenkinsUrl = "https://jenkins-host/mcp-server/mcp"
-        if ($json.mcp -and $json.mcp.servers -and $json.mcp.servers.jenkins -and $json.mcp.servers.jenkins.url) {
-            $defaultJenkinsUrl = [string]$json.mcp.servers.jenkins.url
-        }
-
-        # Resolve values: explicit param > process env > interactive prompt.
+        # Resolve value: explicit param > process env > interactive prompt.
         $githubPat = ConvertTo-PlainSecret -Secret $GithubPatParam
         if ([string]::IsNullOrWhiteSpace($githubPat) -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_PAT)) {
             $githubPat = $env:GITHUB_PAT
             Write-Info "Using GITHUB_PAT from process environment."
         }
 
-        if ($null -eq $JenkinsUrlParam) { $JenkinsUrlParam = "" }
-        $jenkinsUrl = $JenkinsUrlParam.Trim()
-        if ([string]::IsNullOrWhiteSpace($jenkinsUrl)) {
-            if (-not [string]::IsNullOrWhiteSpace($env:JENKINS_URL)) {
-                $jenkinsUrl = $env:JENKINS_URL.Trim()
-                Write-Info "Using JENKINS_URL from process environment."
-            } elseif (-not [string]::IsNullOrWhiteSpace($env:JENKINS_MCP_URL)) {
-                $jenkinsUrl = $env:JENKINS_MCP_URL.Trim()
-                Write-Info "Using JENKINS_MCP_URL from process environment."
-            }
-        }
-
-        $jenkinsAuth = ConvertTo-PlainSecret -Secret $JenkinsAuthParam
-        if ([string]::IsNullOrWhiteSpace($jenkinsAuth)) {
-            if (-not [string]::IsNullOrWhiteSpace($env:JENKINS_BASIC_AUTH)) {
-                $jenkinsAuth = $env:JENKINS_BASIC_AUTH
-                Write-Info "Using JENKINS_BASIC_AUTH from process environment."
-            } elseif (-not [string]::IsNullOrWhiteSpace($env:JENKINS_AUTH)) {
-                $jenkinsAuth = $env:JENKINS_AUTH
-                Write-Info "Using JENKINS_AUTH from process environment."
-            }
-        }
-
-        # Optional prompts. Empty/error just skips customization.
-        # Secrets use SecureString so keystrokes are not echoed; Jenkins URL
-        # is not secret and stays a normal Read-Host.
+        # Optional prompt. Empty/error just skips customization.
+        # Secrets use SecureString so keystrokes are not echoed.
         if ([string]::IsNullOrWhiteSpace($githubPat)) {
             if ($NonInteractive) {
                 Write-Info "Skipping GitHub PAT prompt (non-interactive); pass -GithubPat or set GITHUB_PAT to include it."
@@ -438,87 +356,26 @@ function Get-CustomizedOpencodeJson {
                 } catch { $githubPat = "" }
             }
         }
-        if ([string]::IsNullOrWhiteSpace($jenkinsUrl)) {
-            if ($NonInteractive) {
-                Write-Info "Skipping Jenkins URL prompt (non-interactive); pass -JenkinsUrl or set JENKINS_URL to include it."
-            } else {
-                try { $jenkinsUrl = Read-Host ("Jenkins URL (optional, Enter to keep [$defaultJenkinsUrl])") } catch { $jenkinsUrl = "" }
-            }
-        }
-        if ([string]::IsNullOrWhiteSpace($jenkinsAuth)) {
-            if ($NonInteractive) {
-                Write-Info "Skipping Jenkins auth prompt (non-interactive); pass -JenkinsAuth or set JENKINS_BASIC_AUTH to include it."
-            } else {
-                try {
-                    $jenkinsAuthSecure = Read-Host "Jenkins Basic auth value, user:token base64 WITHOUT 'Basic ' prefix (optional, Enter to skip)" -AsSecureString
-                    if ($null -ne $jenkinsAuthSecure) { $jenkinsAuth = Convert-SecureStringToPlainText -Secure $jenkinsAuthSecure }
-                    $jenkinsAuthSecure = $null
-                } catch { $jenkinsAuth = "" }
-            }
-        }
         if ($null -eq $githubPat) { $githubPat = "" } else { $githubPat = $githubPat.Trim() }
-        if ($null -eq $jenkinsUrl) { $jenkinsUrl = "" } else { $jenkinsUrl = $jenkinsUrl.Trim() }
-        $jenkinsAuth = Normalize-BasicAuthValue -Value $jenkinsAuth
 
         $hasGithubPat = -not [string]::IsNullOrWhiteSpace($githubPat)
-        $hasJenkinsUrl = -not [string]::IsNullOrWhiteSpace($jenkinsUrl)
-        $hasJenkinsAuth = -not [string]::IsNullOrWhiteSpace($jenkinsAuth)
-
-        # Light validation before saving: warn-and-skip bad values.
-        if ($hasJenkinsUrl -and -not (Test-HttpUrl -Url $jenkinsUrl)) {
-            Write-Warn "Jenkins URL does not look like http(s)://... - skipping URL customization."
-            $hasJenkinsUrl = $false
-            $jenkinsUrl = ""
-        }
-
-        if (-not $hasGithubPat -and -not $hasJenkinsUrl -and -not $hasJenkinsAuth) {
+        if (-not $hasGithubPat) {
             Write-Info "No custom credentials entered; deploying opencode.json as-is."
             return $SrcPath
         }
 
-        # Secrets are NEVER baked into JSON. Placeholders
-        # (Bearer {env:GITHUB_PAT} / Basic {env:JENKINS_BASIC_AUTH}) stay as-is
-        # in the template; raw values go to User env only.
-        if ($hasGithubPat) {
-            Save-McpSecretToUserEnv -Name 'GITHUB_PAT' -Value $githubPat -NonInteractive:$NonInteractive
-        }
+        # Secrets are NEVER baked into JSON. Placeholder
+        # (Bearer {env:GITHUB_PAT}) stays as-is in the template;
+        # raw value goes to User env only.
+        Save-McpSecretToUserEnv -Name 'GITHUB_PAT' -Value $githubPat -NonInteractive:$NonInteractive
         $githubPat = ""
-        if ($hasJenkinsAuth) {
-            Save-McpSecretToUserEnv -Name 'JENKINS_BASIC_AUTH' -Value $jenkinsAuth -NonInteractive:$NonInteractive
-        }
-        $jenkinsAuth = ""
-
-        $jsonDirty = $false
-        if (($hasJenkinsUrl -or $hasJenkinsAuth) -and $json.mcp -and $json.mcp.servers -and $json.mcp.servers.jenkins) {
-            if ($hasJenkinsUrl) {
-                $json.mcp.servers.jenkins.url = $jenkinsUrl
-                $jsonDirty = $true
-            }
-            if ($json.mcp.servers.jenkins.PSObject.Properties['disabled']) {
-                $null = $json.mcp.servers.jenkins.PSObject.Properties.Remove('disabled')
-                $jsonDirty = $true
-            }
-        }
-
-        if (-not $jsonDirty) {
-            # Only secrets were provided; JSON needs no patch (placeholders stay).
-            return $SrcPath
-        }
-
-        $json | ConvertTo-Json -Depth 10 | Set-Content -Path $staging -Encoding UTF8
-        Write-Ok "Staged customized opencode.json."
-        $keepStaging = $true
-        return $staging
+        return $SrcPath
     } catch {
         Write-Warn "Skipping credential customization; deploying opencode.json as-is."
         return $SrcPath
     } finally {
-        # Clear plaintext ASAP; drop the staging copy unless the caller needs it.
+        # Clear plaintext ASAP.
         $githubPat = ""
-        $jenkinsAuth = ""
-        if (-not $keepStaging -and $staging -and (Test-Path -Path $staging)) {
-            Remove-Item -Path $staging -ErrorAction SilentlyContinue
-        }
     }
 }
 
@@ -528,8 +385,6 @@ function Deploy-Configs {
     param(
         [string]$TargetDir,
         [object]$GithubPat = $null,
-        [string]$JenkinsUrl = "",
-        [object]$JenkinsAuth = $null,
         [switch]$NonInteractive
     )
 
@@ -540,7 +395,7 @@ function Deploy-Configs {
     $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 
     $opencodeSrc = Join-Path -Path $ScriptDir -ChildPath "opencode.json"
-    $stagedOpencodeJson = Get-CustomizedOpencodeJson -SrcPath $opencodeSrc -GithubPatParam $GithubPat -JenkinsUrlParam $JenkinsUrl -JenkinsAuthParam $JenkinsAuth -NonInteractive:$NonInteractive
+    $stagedOpencodeJson = Get-CustomizedOpencodeJson -SrcPath $opencodeSrc -GithubPatParam $GithubPat -NonInteractive:$NonInteractive
 
     foreach ($file in $ConfigFiles) {
         $src = Join-Path -Path $ScriptDir -ChildPath $file
@@ -692,7 +547,7 @@ function Main {
     }
 
     # Step 3 - Deploy config files (applies to Terminal, Desktop, and Both)
-    Deploy-Configs -TargetDir $cfgDir -GithubPat $GithubPat -JenkinsUrl $JenkinsUrl -JenkinsAuth $JenkinsAuth -NonInteractive:$NonInteractive
+    Deploy-Configs -TargetDir $cfgDir -GithubPat $GithubPat -NonInteractive:$NonInteractive
 
     # Background service restart (only when CLI is available)
     if ($installType -eq "Terminal" -or $installType -eq "Both" -or (Get-Command opencode -ErrorAction SilentlyContinue)) {

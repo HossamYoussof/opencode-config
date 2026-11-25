@@ -48,8 +48,6 @@ def main():
         (r'\[switch\]\s*\$Desktop', "switch $Desktop"),
         (r'\[switch\]\s*\$Both', "switch $Both"),
         (r'\$GithubPat', "$GithubPat"),
-        (r'\$JenkinsUrl', "$JenkinsUrl"),
-        (r'\$JenkinsAuth', "$JenkinsAuth"),
         (r'\[switch\]\s*\$NonInteractive', "switch $NonInteractive"),
         (r'\[switch\]\s*\$SkipStar', "switch $SkipStar"),
     ]
