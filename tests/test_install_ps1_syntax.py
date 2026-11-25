@@ -58,7 +58,7 @@ def main():
             sys.exit(1)
 
     # 4. Function Definitions
-    functions = ["Get-DesktopDownloadInfo", "Download-And-Install-Desktop", "Get-InstallType"]
+    functions = ["Get-DesktopDownloadInfo", "Find-DesktopApp", "Download-And-Install-Desktop", "Get-InstallType"]
     for fn in functions:
         if not re.search(rf"function\s+{re.escape(fn)}\b", content, re.IGNORECASE):
             print(f"FAIL: install.ps1 is missing function {fn}")
@@ -96,6 +96,10 @@ def main():
 
     if "Get-DesktopDownloadInfo" not in dl_body:
         print("FAIL: Download-And-Install-Desktop does not call Get-DesktopDownloadInfo")
+        sys.exit(1)
+
+    if "Find-DesktopApp" not in dl_body:
+        print("FAIL: Download-And-Install-Desktop does not call Find-DesktopApp")
         sys.exit(1)
 
     if "USERPROFILE" not in dl_body or "Downloads" not in dl_body:
