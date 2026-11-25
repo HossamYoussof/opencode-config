@@ -97,40 +97,6 @@ _is_blank() {
   esac
 }
 
-# Jenkins URL must look like http(s):// when provided.
-_valid_jenkins_url() {
-  case "$1" in
-    http://*|https://*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-# Trim leading/trailing whitespace without spawning sed/awk.
-_trim_ws() {
-  local v="$1"
-  v="${v#"${v%%[![:space:]]*}"}"
-  v="${v%"${v##*[![:space:]]}"}"
-  printf '%s' "$v"
-}
-
-# Strip a leading "Basic " prefix (case-insensitive) after trimming.
-# A bare "Basic" with no credentials is treated as empty.
-_strip_basic_prefix() {
-  local v
-  v="$(_trim_ws "$1")"
-  case "$v" in
-    [Bb][Aa][Ss][Ii][Cc])
-      printf '%s' ""
-      return 0
-      ;;
-    [Bb][Aa][Ss][Ii][Cc][[:space:]]*)
-      v="${v#*[[:space:]]}"
-      v="$(_trim_ws "$v")"
-      ;;
-  esac
-  printf '%s' "$v"
-}
-
 detect_os() {
   case "$(uname -s)" in
     Darwin*)  echo "macos" ;;
@@ -718,14 +684,13 @@ customize_opencode_json() {
 
   cp "$src_file" "$staging_file"
 
-  # Secrets may come from the environment (non-interactive use):
-  # GITHUB_PAT, JENKINS_BASIC_AUTH, and the non-secret JENKINS_URL.
-  local github_pat="${GITHUB_PAT:-}" jenkins_url="${JENKINS_URL:-}" jenkins_auth="${JENKINS_BASIC_AUTH:-}"
+  # Secrets may come from the environment (non-interactive use): GITHUB_PAT.
+  local github_pat="${GITHUB_PAT:-}"
   local prompted=0
 
   if [[ "$SKIP_MCP" -eq 1 ]]; then
     info "Skipping MCP credential prompts (--skip-mcp)."
-    github_pat=""; jenkins_url=""; jenkins_auth=""
+    github_pat=""
     return 0
   elif [[ "$NON_INTERACTIVE" -eq 1 ]]; then
     info "Non-interactive mode: using credential values from the environment (if set)."
@@ -733,135 +698,40 @@ customize_opencode_json() {
     info "No interactive input available — using credential values from the environment (if set)."
   else
     prompted=1
-    local _pat="" _url="" _auth=""
+    local _pat=""
     # Only prompt for values not already provided via the environment.
     if [[ -z "$github_pat" ]]; then
       read -r -s -p "GitHub PAT for MCP (optional, Enter to skip): " _pat || true
       printf '\n'
       github_pat="$_pat"
     fi
-    if [[ -z "$jenkins_url" ]]; then
-      read -r -p "Jenkins URL (optional, Enter to skip) [https://jenkins-host/mcp-server/mcp]: " _url || true
-      jenkins_url="$_url"
-    fi
-    if [[ -z "$jenkins_auth" ]]; then
-      read -r -p "Jenkins Basic auth value - user:token base64 WITHOUT 'Basic ' prefix (optional, Enter to skip): " _auth || true
-      jenkins_auth="$_auth"
-    fi
-    _pat=""; _url=""; _auth=""
-    unset _pat _url _auth
+    _pat=""
+    unset _pat
   fi
 
   # Light validation: warn-and-skip bad values instead of storing them.
   if _is_blank "$github_pat"; then
     github_pat=""
   fi
-  if _is_blank "$jenkins_auth"; then
-    jenkins_auth=""
-  fi
-  jenkins_url="$(_trim_ws "$jenkins_url")"
-  if [[ -n "$jenkins_url" ]] && ! _valid_jenkins_url "$jenkins_url"; then
-    warn "Ignoring Jenkins URL '${jenkins_url}' — it must start with http:// or https://."
-    jenkins_url=""
-  fi
 
-  if [[ -z "${github_pat}" && -z "${jenkins_url}" && -z "${jenkins_auth}" ]]; then
+  if [[ -z "${github_pat}" ]]; then
     if [[ "$prompted" -eq 0 ]]; then
-      info "No MCP credentials in the environment — skipping (re-run interactively or set GITHUB_PAT / JENKINS_URL / JENKINS_BASIC_AUTH to configure)."
+      info "No MCP credentials in the environment — skipping (re-run interactively or set GITHUB_PAT to configure)."
     fi
     return 0
   fi
 
-  # Persist raw secrets to shell rc + current session only (one pass per
-  # rc file for all secrets). They are NEVER written into the deployed
-  # opencode.json; the JSON keeps `Bearer {env:GITHUB_PAT}` /
-  # `Basic {env:JENKINS_BASIC_AUTH}`.
-  local normalized_auth=""
-  if [[ -n "${jenkins_auth}" ]]; then
-    normalized_auth="$(_strip_basic_prefix "${jenkins_auth}")"
-    if _is_blank "$normalized_auth"; then
-      warn "Ignoring Jenkins auth value — it is empty after trimming."
-      normalized_auth=""
-      jenkins_auth=""
-    fi
-  fi
-
-  if [[ -n "${github_pat}" && -n "${normalized_auth}" ]]; then
-    export GITHUB_PAT="${github_pat}"
-    export JENKINS_BASIC_AUTH="${normalized_auth}"
-    if persist_secrets_to_rc "GITHUB_PAT" "${github_pat}" "JENKINS_BASIC_AUTH" "${normalized_auth}"; then
-      SECRETS_SAVED_THIS_RUN=1
-      ok "Saved GITHUB_PAT to shell rc; config keeps {env:GITHUB_PAT}."
-      ok "Saved JENKINS_BASIC_AUTH to shell rc; config keeps {env:JENKINS_BASIC_AUTH}."
-    fi
-  elif [[ -n "${github_pat}" ]]; then
-    export GITHUB_PAT="${github_pat}"
-    if persist_secret_to_rc "GITHUB_PAT" "${github_pat}"; then
-      SECRETS_SAVED_THIS_RUN=1
-      ok "Saved GITHUB_PAT to shell rc; config keeps {env:GITHUB_PAT}."
-    fi
-  elif [[ -n "${normalized_auth}" ]]; then
-    export JENKINS_BASIC_AUTH="${normalized_auth}"
-    if persist_secret_to_rc "JENKINS_BASIC_AUTH" "${normalized_auth}"; then
-      SECRETS_SAVED_THIS_RUN=1
-      ok "Saved JENKINS_BASIC_AUTH to shell rc; config keeps {env:JENKINS_BASIC_AUTH}."
-    fi
-  fi
-
-  local jenkins_auth_provided=0
-  if [[ -n "${normalized_auth}" ]]; then
-    jenkins_auth_provided=1
+  # Persist raw secrets to shell rc + current session only. They are NEVER
+  # written into the deployed opencode.json; the JSON keeps `Bearer {env:GITHUB_PAT}`.
+  export GITHUB_PAT="${github_pat}"
+  if persist_secret_to_rc "GITHUB_PAT" "${github_pat}"; then
+    SECRETS_SAVED_THIS_RUN=1
+    ok "Saved GITHUB_PAT to shell rc; config keeps {env:GITHUB_PAT}."
   fi
 
   # Reduce exposure of raw secrets in this shell.
   github_pat=""
-  jenkins_auth=""
-  normalized_auth=""
-  unset github_pat jenkins_auth normalized_auth
-
-  # Only the non-secret Jenkins URL is patched into the staging JSON.
-  if [[ -z "${jenkins_url}" && ${jenkins_auth_provided} -eq 0 ]]; then
-    return 0
-  fi
-
-  if ! command -v python3 &>/dev/null; then
-    warn "python3 not found — deploying opencode.json without patching Jenkins URL (secrets still saved to shell rc)."
-    return 0
-  fi
-
-  JENKINS_URL="${jenkins_url}" JENKINS_AUTH_PROVIDED="${jenkins_auth_provided}" \
-    python3 - "$staging_file" <<'PYEOF'
-import json
-import os
-import sys
-
-path = sys.argv[1]
-jurl = os.environ.get("JENKINS_URL", "").strip()
-auth_provided = os.environ.get("JENKINS_AUTH_PROVIDED", "0") == "1"
-
-with open(path) as f:
-    data = json.load(f)
-
-servers = data.setdefault("mcp", {}).setdefault("servers", {})
-
-# Secrets are never written here; placeholders like
-# `Bearer {env:GITHUB_PAT}` / `Basic {env:JENKINS_BASIC_AUTH}` stay as-is.
-# Only the non-secret Jenkins URL is patched.
-jenkins_provided = bool(jurl or auth_provided)
-if jenkins_provided:
-    jenkins = servers.setdefault("jenkins", {})
-    if jurl:
-        jenkins["url"] = jurl
-    jenkins.pop("disabled", None)
-
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-    f.write("\n")
-PYEOF
-
-  if [[ -n "${jenkins_url}" || ${jenkins_auth_provided} -eq 1 ]]; then
-    ok "Patched Jenkins MCP URL (enabled)."
-  fi
+  unset github_pat
 }
 
 
@@ -995,8 +865,7 @@ main() {
         echo "  --terminal         Install OpenCode Terminal (CLI) only."
         echo "  --desktop          Install OpenCode Desktop (GUI App) only."
         echo "  --both             Install both Terminal and Desktop."
-        echo "  --non-interactive  Read GITHUB_PAT / JENKINS_URL / JENKINS_BASIC_AUTH"
-        echo "                     from the environment; never prompt."
+        echo "  --non-interactive  Read GITHUB_PAT from the environment; never prompt."
         echo "  --skip-mcp         Skip MCP credential prompts entirely."
         echo "  -h, --help         Show this help message."
         return 0
@@ -1048,7 +917,7 @@ main() {
 
   print_path_next_steps
 
-  if [[ "${SECRETS_SAVED_THIS_RUN:-0}" -eq 1 ]] && [[ -n "${GITHUB_PAT:-}" || -n "${JENKINS_BASIC_AUTH:-}" ]]; then
+  if [[ "${SECRETS_SAVED_THIS_RUN:-0}" -eq 1 ]] && [[ -n "${GITHUB_PAT:-}" ]]; then
     # This installer session already has the new secrets exported, so a
     # restart from here hands them to the background service directly —
     # no need to reload the shell first.
@@ -1067,7 +936,7 @@ main() {
       warn "Run: source ~/.zshrc (or source ~/.bashrc), then opencode service restart && opencode mcp list"
     fi
     warn "This terminal still has the old env until you reload it: source ~/.zshrc (or source ~/.bashrc), or open a new terminal."
-  elif [[ "$SKIP_MCP" -eq 0 ]] && [[ -n "${GITHUB_PAT:-}" || -n "${JENKINS_BASIC_AUTH:-}" ]]; then
+  elif [[ "$SKIP_MCP" -eq 0 ]] && [[ -n "${GITHUB_PAT:-}" ]]; then
     # Secrets were inherited from the environment but this run saved
     # nothing new — do not auto-restart, print only the manual hint.
     warn "Run: source ~/.zshrc (or source ~/.bashrc), then opencode service restart && opencode mcp list"

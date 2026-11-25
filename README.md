@@ -33,7 +33,6 @@ Disabled by default (enable as needed by removing `"disabled": true`):
 - **linear** — Linear project management (remote)
 - **clickup** — ClickUp project management (remote)
 - **luciq** — Instabug integration (remote)
-- **jenkins** — Jenkins automation (remote, `Authorization: Basic {env:JENKINS_BASIC_AUTH}`) — ships with a placeholder URL (`https://jenkins-host/mcp-server/mcp`); set your URL + auth to enable
 
 > Note: `xcodebuild`, `mobile`, and `ios-simulator` overlap on Apple/mobile automation. The default keeps `xcodebuild` + `mobile` enabled and `ios-simulator` disabled; enable it only if you need its simulator controls.
 
@@ -80,7 +79,7 @@ git clone https://github.com/HossamYoussof/opencode-config.git opencode-config &
 - `--desktop`: Install OpenCode Desktop (GUI App) only.
 - `--terminal`: Install OpenCode Terminal (CLI) only.
 - `--both`: Install both Terminal and Desktop.
-- `--non-interactive`: Read `GITHUB_PAT` / `JENKINS_URL` / `JENKINS_BASIC_AUTH` from env, never prompt (defaults to Terminal if type unspecified).
+- `--non-interactive`: Read `GITHUB_PAT` from env, never prompt (defaults to Terminal if type unspecified).
 - `--skip-mcp`: Skip MCP credential prompts entirely.
 - `OPENCODE_INSTALL_TYPE`: Set via environment variable (`export OPENCODE_INSTALL_TYPE=desktop`).
 
@@ -103,7 +102,6 @@ git clone https://github.com/HossamYoussof/opencode-config.git opencode-config; 
 # Non-interactive (skips credential + star prompts; honors params/env):
 # .\install.ps1 -NonInteractive
 # .\install.ps1 -Desktop -NonInteractive
-# .\install.ps1 -JenkinsUrl "https://jenkins.example.com/mcp-server/mcp" -NonInteractive
 # .\install.ps1 -SkipStar
 ```
 
@@ -114,7 +112,7 @@ git clone https://github.com/HossamYoussof/opencode-config.git opencode-config; 
 - `-Both`: Install both Terminal and Desktop.
 - `-NonInteractive`: Skips credential and star prompts (defaults to Terminal if type unspecified).
 - `$env:OPENCODE_INSTALL_TYPE`: Set via environment variable (`$env:OPENCODE_INSTALL_TYPE = "Desktop"`).
-- `-GithubPat` / `-JenkinsAuth`: Optional credentials (SecureString preferred, plain string works); falls back to `GITHUB_PAT` / `JENKINS_URL` (`JENKINS_MCP_URL`) / `JENKINS_BASIC_AUTH` (`JENKINS_AUTH`) from the process environment.
+- `-GithubPat`: Optional credential (SecureString preferred, plain string works); falls back to `GITHUB_PAT` from the process environment.
 
 **How it works:**
 - **Terminal**: Native Windows CLI installs via **npm only** (`npm install -g @opencode/cli`). Windows package managers (winget/scoop/choco) install the old v1 build and are not supported — use WSL + `install.sh` if you need the curl method.
@@ -126,7 +124,7 @@ The scripts will:
 1. **Resolve Installation Target**: Prompt for or resolve installation type (**Terminal**, **Desktop**, or **Both**).
    - If Terminal is selected: install CLI if not already present.
    - If Desktop is selected: download the official installer to `~/Downloads` and launch it.
-2. **Configure Credentials (Optional)**: Prompt for GitHub PAT + Jenkins URL/auth (Enter to skip). Secrets are saved to your shell rc (`~/.zshrc`/`~/.bashrc`) or User env (Windows) and exported to the session; they are **never** baked into `opencode.json`, which keeps `{env:GITHUB_PAT}` / `{env:JENKINS_BASIC_AUTH}` placeholders. Only the non-secret Jenkins URL is patched into the deployed JSON (and `disabled` is removed when URL or auth is provided).
+2. **Configure Credentials (Optional)**: Prompt for GitHub PAT (Enter to skip). Secrets are saved to your shell rc (`~/.zshrc`/`~/.bashrc`) or User env (Windows) and exported to the session; they are **never** baked into `opencode.json`, which keeps `{env:GITHUB_PAT}` placeholders.
 3. **Deploy Configs**: Copy `opencode.json` and `oh-my-opencode-slim.json` to the global config directory (for all install types), backing up any existing configs to `.bak.<timestamp>` first.
 4. **Restart Background Service**: Auto-restart the background service when this run persisted a secret (`install.sh`: SECRETS_SAVED_THIS_RUN; `install.ps1`: $script:SavedSecrets), otherwise print the manual restart hint.
 
@@ -159,7 +157,7 @@ New-Item -ItemType Directory -Force -Path "$env:APPDATA\opencode"
 Copy-Item opencode.json, oh-my-opencode-slim.json "$env:APPDATA\opencode\"
 ```
 
-If you need the github/jenkins MCPs, export `GITHUB_PAT` / `JENKINS_BASIC_AUTH` in your shell env (the JSON already references them via `{env:...}`), update the Jenkins `url`, remove its `"disabled": true`, then run `opencode service restart && opencode mcp list`.
+If you need the github MCP, export `GITHUB_PAT` in your shell env (the JSON already references it via `{env:GITHUB_PAT}`), then run `opencode service restart && opencode mcp list`.
 
 ## Model Refresh Script
 
